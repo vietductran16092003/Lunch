@@ -30,6 +30,12 @@ def build_admin_blueprint(services) -> Blueprint:
         data = request.get_json(silent=True) or {}
         return jsonify(services.restaurants.create(data)), 201
 
+    @bp.put("/restaurants/<int:restaurant_id>")
+    @require_admin
+    def update_restaurant(restaurant_id):
+        data = request.get_json(silent=True) or {}
+        return jsonify(services.restaurants.update(restaurant_id, data))
+
     @bp.delete("/restaurants/<int:restaurant_id>")
     @require_admin
     def delete_restaurant(restaurant_id):
@@ -67,6 +73,20 @@ def build_admin_blueprint(services) -> Blueprint:
             (data.get("qr_image_url") or "").strip(),
         )
         return jsonify({"status": "updated"})
+
+    # ===== Giờ chốt đơn (4.1) =====
+
+    @bp.put("/deadline")
+    @require_admin
+    def set_deadline():
+        data = request.get_json(silent=True) or {}
+        return jsonify(services.deadlines.configure(data))
+
+    @bp.delete("/deadline/<date>")
+    @require_admin
+    def reset_deadline(date):
+        """Bỏ giờ riêng của ngày, quay về giờ mặc định của hệ thống."""
+        return jsonify(services.deadlines.reset(date))
 
     # ===== Bảng điều khiển =====
 

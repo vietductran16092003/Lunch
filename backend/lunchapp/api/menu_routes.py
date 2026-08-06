@@ -23,4 +23,10 @@ def build_menu_blueprint(services) -> Blueprint:
     def list_restaurants():
         return jsonify({"restaurants": services.restaurants.list_all()})
 
+    @bp.get("/deadline")
+    @require_login
+    def deadline():
+        """Giờ chốt của một ngày — ai cũng cần biết còn bao lâu nữa hết hạn đặt."""
+        return jsonify(services.deadlines.describe(request.args.get("date")))
+
     return bp

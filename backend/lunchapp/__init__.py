@@ -16,6 +16,7 @@ from .api import (
     build_auth_blueprint,
     build_menu_blueprint,
     build_order_blueprint,
+    build_role_blueprint,
     build_system_blueprint,
 )
 from .config import Config, OrderStatus
@@ -46,6 +47,7 @@ def create_app(config=Config, container: ServiceContainer | None = None) -> Flas
     app.register_blueprint(build_menu_blueprint(services))
     app.register_blueprint(build_order_blueprint(services))
     app.register_blueprint(build_admin_blueprint(services))
+    app.register_blueprint(build_role_blueprint(services))
 
     return app
 

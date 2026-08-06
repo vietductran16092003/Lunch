@@ -82,6 +82,14 @@ export class RestaurantManager {
   }
 
   buildRow(restaurant) {
+    const edit = Dom.el("button", {
+      type: "button",
+      class: "ghost",
+      text: "Sửa",
+      "aria-label": `Sửa nhà hàng ${restaurant.name}`,
+    });
+    edit.addEventListener("click", () => this.openEditor(restaurant));
+
     const remove = Dom.el("button", {
       type: "button",
       class: "danger",
@@ -113,8 +121,90 @@ export class RestaurantManager {
             })
           : "—"
       ),
-      Dom.el("td", {}, remove)
+      Dom.el(
+        "td",
+        {},
+        Dom.el("div", { style: "display:flex; gap:6px; flex-wrap:wrap;" }, edit, remove)
+      )
     );
+  }
+
+  /** Form sửa nhà hàng (mã 2.5), dùng lại khung xem trước ở trên. */
+  openEditor(restaurant) {
+    if (!this.previewBox) return;
+    Dom.clear(this.previewBox);
+
+    const field = (id, labelText, value, type = "text") => {
+      const input = Dom.el("input", { type, id, value: value == null ? "" : value });
+      if (type === "number") Object.assign(input, { min: "0", max: "5", step: "0.1" });
+      return {
+        input,
+        node: Dom.el("div", { class: "field" }, Dom.el("label", { for: id, text: labelText }), input),
+      };
+    };
+
+    const name = field("edit-name", "Tên nhà hàng", restaurant.name);
+    const address = field("edit-address", "Địa chỉ", restaurant.address);
+    const rating = field("edit-rating", "Đánh giá (0–5)", restaurant.rating, "number");
+    const grabUrl = field("edit-grab-url", "Đường dẫn GrabFood", restaurant.grab_url, "url");
+
+    const save = Dom.el("button", { type: "submit", text: "Lưu thay đổi" });
+    const cancel = Dom.el("button", { type: "button", class: "ghost", text: "Hủy" });
+    cancel.addEventListener("click", () => Dom.clear(this.previewBox));
+
+    const message = Dom.el("p", {
+      role: "status",
+      "aria-live": "polite",
+      style: "margin:0; flex-basis:100%;",
+    });
+
+    const form = Dom.el(
+      "form",
+      { style: "background:none; border:none; padding:0; width:100%;" },
+      Dom.el(
+        "div",
+        { style: "display:flex; flex-wrap:wrap; gap:12px;" },
+        name.node, address.node, rating.node, grabUrl.node
+      ),
+      Dom.el("div", { style: "display:flex; gap:8px; margin-top:12px;" }, save, cancel),
+      message
+    );
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      name.input.removeAttribute("aria-invalid");
+
+      if (!name.input.value.trim()) {
+        name.input.setAttribute("aria-invalid", "true");
+        name.input.focus();
+        message.className = "message-error";
+        message.textContent = "Vui lòng nhập tên nhà hàng";
+        return;
+      }
+
+      Dom.setBusy(save, true, "Đang lưu thay đổi");
+      try {
+        await api.put(`/admin/restaurants/${restaurant.id}`, {
+          name: name.input.value.trim(),
+          address: address.input.value.trim(),
+          rating: rating.input.value,
+          grab_url: grabUrl.input.value.trim(),
+        });
+        toasts.success("Đã lưu nhà hàng", name.input.value.trim());
+        Dom.clear(this.previewBox);
+        await this.load();
+      } catch (err) {
+        Dom.setBusy(save, false);
+        message.className = "message-error";
+        message.textContent = err.message;
+        toasts.error("Lưu thất bại", err.message);
+      }
+    });
+
+    this.previewBox.appendChild(
+      Dom.el("div", { class: "card" }, Dom.el("h3", { text: `Sửa: ${restaurant.name}` }), form)
+    );
+    name.input.focus();
   }
 
   async delete(restaurant, button) {

@@ -52,6 +52,8 @@ class Database:
             self._create_indexes(cursor)
             self._migrate_suppliers_to_restaurants(cursor)
             self._seed_demo_data(cursor)
+            # Chạy sau cùng: cần users đã có (kể cả dữ liệu seed) mới suy được vai trò
+            self._migrate_roles(cursor)
 
     def _create_tables(self, cursor):
         cursor.execute("""
@@ -121,6 +123,38 @@ class Database:
             )
         """)
 
+        # Một người có thể vừa điều phối vừa thủ quỹ, nên quan hệ là nhiều-nhiều
+        # chứ không phải một cột role trên bảng users.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_roles (
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                PRIMARY KEY (user_id, role),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
+
+        # Lịch trực điều phối: mỗi ngày đúng một người, nên date làm khoá chính.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS coordinator_schedule (
+                date TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
+
+        # Cấu hình giờ chốt theo từng ngày. Bảng dựng sẵn ở đây để phần nghiệp vụ
+        # deadline (mục 4.1) chỉ còn việc đọc/ghi, không phải đụng lại lược đồ.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS deadline_config (
+                date TEXT PRIMARY KEY,
+                cutoff TEXT,
+                auto_lock INTEGER DEFAULT 1,
+                updated_at TEXT
+            )
+        """)
+
     def _migrate_columns(self, cursor):
         for column, ddl in [
             ("phone", "TEXT"), ("qr_image_url", "TEXT"), ("google_sub", "TEXT"),
@@ -143,6 +177,34 @@ class Database:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_menu_items_date ON menu_items (available_date)"
         )
+        # Truy vấn hay gặp nhất là "vai trò của user X", nên đánh index theo user_id
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles (user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles (role)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_coordinator_schedule_user "
+            "ON coordinator_schedule (user_id)"
+        )
+
+    def _migrate_roles(self, cursor):
+        """Sinh dữ liệu user_roles lần đầu từ cột is_admin đang có.
+
+        Chỉ chạy khi bảng còn rỗng, nên gọi init_schema nhiều lần cũng không ghi
+        đè phân quyền mà quản trị viên đã chỉnh tay sau này. Cột is_admin được
+        GIỮ NGUYÊN và vẫn được đồng bộ khi vai trò admin thay đổi, để phần code
+        cũ còn đọc cột đó không vỡ.
+        """
+        from .roles import Role
+
+        existing = cursor.execute("SELECT COUNT(*) FROM user_roles").fetchone()[0]
+        if existing:
+            return
+
+        for row in cursor.execute("SELECT id, is_admin FROM users").fetchall():
+            for role in Role.for_admin_flag(row["is_admin"]):
+                cursor.execute(
+                    "INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)",
+                    (row["id"], role),
+                )
 
     def _migrate_suppliers_to_restaurants(self, cursor):
         """Chuyển dữ liệu bảng suppliers cũ sang restaurants rồi thôi dùng nó.
