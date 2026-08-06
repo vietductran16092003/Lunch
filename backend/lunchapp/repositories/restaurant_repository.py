@@ -29,6 +29,17 @@ class RestaurantRepository(BaseRepository):
             ),
         )
 
+    def update(self, restaurant: Restaurant):
+        self._execute(
+            "UPDATE restaurants SET name = ?, grab_url = ?, external_id = ?, "
+            "address = ?, rating = ?, image_url = ? WHERE id = ?",
+            (
+                restaurant.name, restaurant.grab_url, restaurant.external_id,
+                restaurant.address, restaurant.rating, restaurant.image_url,
+                restaurant.id,
+            ),
+        )
+
     def delete(self, restaurant_id):
         self._execute("DELETE FROM restaurants WHERE id = ?", (restaurant_id,))
 

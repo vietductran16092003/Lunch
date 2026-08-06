@@ -11,7 +11,9 @@ def build_auth_blueprint(services) -> Blueprint:
     auth = services.auth
 
     def _session_payload(user) -> dict:
-        SessionUser.login(user.id, user.is_admin)
+        # Lưu luôn danh sách vai trò vào phiên để require_role khỏi phải hỏi lại
+        # database ở mỗi request.
+        SessionUser.login(user.id, user.is_admin, user.roles)
         return user.to_dict()
 
     @bp.get("/auth/options")
@@ -77,6 +79,9 @@ def build_auth_blueprint(services) -> Blueprint:
         if user is None:
             SessionUser.logout()
             raise UnauthorizedError("Người dùng không tồn tại")
+        # Làm mới vai trò trong phiên: quản trị viên vừa đổi quyền thì người dùng
+        # thấy hiệu lực ngay ở lần tải trang sau, khỏi phải đăng xuất/đăng nhập.
+        SessionUser.login(user.id, user.is_admin, user.roles)
         return jsonify(user.to_dict())
 
     @bp.get("/payment-info")

@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..config import Config
-from ..core.errors import ConflictError, UnauthorizedError, ValidationError
+from ..core.errors import ConflictError, NotFoundError, UnauthorizedError, ValidationError
+from ..core.roles import Role
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -197,6 +198,49 @@ class AuthService:
         self.users.clear_reset_token_and_set_password(
             user.id, self.hash_password(new_password)
         )
+
+    # ===== Phân quyền =====
+
+    def list_users(self) -> list:
+        """Danh bạ rút gọn cho màn hình phân quyền."""
+        return [user.to_directory_entry() for user in self.users.list_all()]
+
+    def role_catalog(self) -> list:
+        """Danh mục vai trò kèm nhãn tiếng Việt, để frontend khỏi hard-code."""
+        return [{"value": role, "label": Role.label(role)} for role in Role.ALL]
+
+    def set_roles(self, user_id, roles, actor_id=None) -> dict:
+        """Ghi đè vai trò của một người.
+
+        Hai lá chắn ở đây tồn tại vì cùng một lý do: hệ thống không được rơi vào
+        trạng thái không còn ai vào được trang quản trị.
+        """
+        user = self.users.find_by_id(user_id)
+        if user is None:
+            raise NotFoundError("Không tìm thấy người dùng")
+
+        if not isinstance(roles, (list, tuple, set)):
+            raise ValidationError("Danh sách vai trò không hợp lệ")
+
+        invalid = Role.invalid_items(roles)
+        if invalid:
+            raise ValidationError(f"Vai trò không hợp lệ: {', '.join(map(str, invalid))}")
+
+        wanted = Role.sort(Role.clean_many(roles))
+        if not wanted:
+            raise ValidationError("Mỗi người phải giữ ít nhất một vai trò")
+
+        losing_admin = user.has_role(Role.ADMIN) and Role.ADMIN not in wanted
+
+        if losing_admin:
+            # Tự gỡ quyền của chính mình là cách nhanh nhất để tự khoá cửa
+            if actor_id is not None and int(actor_id) == int(user.id):
+                raise ConflictError("Bạn không thể tự gỡ vai trò quản trị viên của chính mình")
+            if self.users.count_with_role(Role.ADMIN) <= 1:
+                raise ConflictError("Hệ thống phải còn ít nhất một quản trị viên")
+
+        self.users.replace_roles(user.id, wanted)
+        return self.users.find_by_id(user.id).to_directory_entry()
 
     # ===== Cấu hình cho frontend =====
 

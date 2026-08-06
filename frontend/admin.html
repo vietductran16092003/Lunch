@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=17">
+  <link rel="stylesheet" href="assets/css/style.css?v=19">
 </head>
 <body data-page="admin">
   <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
@@ -16,6 +16,11 @@
   <main class="container" id="main">
     <h1>Đặt hàng</h1>
     <p class="subtitle" id="admin-subtitle">Chọn nhà hàng, dựng thực đơn, rồi chốt đơn và đặt trên Grab.</p>
+
+    <nav class="subnav" aria-label="Khu vực quản trị">
+      <a href="admin.html" aria-current="page">Đặt hàng</a>
+      <a href="settings.html">Quản trị hệ thống</a>
+    </nav>
 
     <!-- Bước 1 — Nhà hàng phải có trước thì mới thêm được món -->
     <div class="section-head">
@@ -148,6 +153,6 @@
       <p id="payment-info-message" role="status" aria-live="polite" style="margin:0;"></p>
     </form>
   </main>
-  <script type="module" src="js/main.js?v=17"></script>
+  <script type="module" src="js/main.js?v=19"></script>
 </body>
 </html>

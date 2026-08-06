@@ -41,7 +41,27 @@ export class Formatter {
     });
   }
 
+  /**
+   * Ngày dạng YYYY-MM-DD theo giờ ĐỊA PHƯƠNG.
+   *
+   * Không dùng toISOString(): hàm đó quy về UTC nên ở múi giờ +7 sẽ trả về ngày
+   * hôm trước trong khoảng 00:00–07:00 sáng.
+   */
+  static toIsoDate(value) {
+    const d = value instanceof Date ? value : new Date(value);
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${month}-${day}`;
+  }
+
   static todayIso() {
-    return new Date().toISOString().slice(0, 10);
+    return Formatter.toIsoDate(new Date());
+  }
+
+  /** Cộng thêm `days` ngày vào một chuỗi YYYY-MM-DD, trả về chuỗi cùng dạng. */
+  static addDays(iso, days) {
+    const d = new Date(`${iso}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return Formatter.toIsoDate(d);
   }
 }

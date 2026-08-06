@@ -10,24 +10,39 @@ class OrderService:
     PAYMENT_METHOD = "transfer"
 
     def __init__(self, order_repository, menu_repository, user_repository,
-                 restaurant_repository, event_broker, config=Config):
+                 restaurant_repository, event_broker, config=Config,
+                 deadline_service=None):
         self.orders = order_repository
         self.menu = menu_repository
         self.users = user_repository
         self.restaurants = restaurant_repository
         self.events = event_broker
         self.config = config
+        # Có DeadlineService thì giờ chốt lấy theo từng ngày (mã 4.1); không có
+        # thì quay về giờ mặc định trong Config như trước, hành vi không đổi.
+        self.deadlines = deadline_service
 
     # ===== Kiểm tra chung =====
 
+    def cutoff_for(self, target_date: str) -> str:
+        if self.deadlines:
+            return self.deadlines.cutoff_for(target_date)
+        return self.config.cutoff_label()
+
+    def is_closed(self, target_date: str) -> bool:
+        if self.deadlines:
+            return self.deadlines.is_locked(target_date)
+        return self.config.cutoff_passed_for(target_date)
+
     def _assert_open(self, target_date: str, action: str):
-        if not self.config.cutoff_passed_for(target_date):
+        if not self.is_closed(target_date):
             return
+        cutoff = self.cutoff_for(target_date)
         if Clock.is_past(target_date):
             message = f"Ngày {target_date} đã qua, không thể {action}"
         else:
-            message = f"Đã quá giờ chốt đơn ({self.config.cutoff_label()}), không thể {action}"
-        raise ValidationError(message, payload={"cutoff": self.config.cutoff_label()})
+            message = f"Đã quá giờ chốt đơn ({cutoff}), không thể {action}"
+        raise ValidationError(message, payload={"cutoff": cutoff})
 
     def _load_own_order(self, order_id, user_id):
         order = self.orders.find_by_id(order_id)
@@ -114,8 +129,8 @@ class OrderService:
             "order": order.to_dict() if order else None,
             "date": target_date,
             "is_today": target_date == Clock.today(),
-            "cutoff": self.config.cutoff_label(),
-            "cutoff_passed": self.config.cutoff_passed_for(target_date),
+            "cutoff": self.cutoff_for(target_date),
+            "cutoff_passed": self.is_closed(target_date),
         }
 
     def history(self, user_id) -> dict:

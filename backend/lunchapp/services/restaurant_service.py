@@ -1,6 +1,6 @@
 """Nghiệp vụ quản lý nhà hàng."""
 
-from ..core.errors import ValidationError
+from ..core.errors import NotFoundError, ValidationError
 from ..models import Restaurant
 
 
@@ -46,6 +46,43 @@ class RestaurantService:
         new_id = self.restaurants.create(restaurant)
         self.events.publish("restaurant_added", {"id": new_id, "name": name})
         return {"id": new_id, "name": name}
+
+    def update(self, restaurant_id, data: dict) -> dict:
+        """Sửa thông tin nhà hàng (mã 2.5).
+
+        Chỉ ghi đè những trường được gửi lên, trường vắng mặt giữ nguyên giá trị
+        cũ — nhờ vậy giao diện sửa từng phần không vô tình xoá dữ liệu.
+        """
+        existing = self.restaurants.find_by_id(restaurant_id)
+        if existing is None:
+            raise NotFoundError("Không tìm thấy nhà hàng")
+
+        if "name" in data:
+            name = (data.get("name") or "").strip()
+            if not name:
+                raise ValidationError("Vui lòng nhập tên nhà hàng")
+            existing.name = name
+
+        if "grab_url" in data:
+            grab_url = (data.get("grab_url") or "").strip()
+            if grab_url and not self.grab.is_grab_url(grab_url):
+                raise ValidationError("Đường dẫn phải thuộc food.grab.com")
+            existing.grab_url = grab_url or None
+
+        if "address" in data:
+            existing.address = (data.get("address") or "").strip() or None
+        if "image_url" in data:
+            existing.image_url = (data.get("image_url") or "").strip() or None
+        if "external_id" in data:
+            existing.external_id = (data.get("external_id") or "").strip() or None
+        if "rating" in data:
+            existing.rating = self._parse_rating(data.get("rating"))
+
+        self.restaurants.update(existing)
+        self.events.publish("restaurant_updated", {
+            "id": existing.id, "name": existing.name
+        })
+        return existing.to_dict()
 
     def delete(self, restaurant_id):
         in_use = self.restaurants.count_menu_items(restaurant_id)

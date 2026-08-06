@@ -12,11 +12,13 @@ import {
 } from "./pages/AuthPages.js";
 import { HistoryPage } from "./pages/HistoryPage.js";
 import { MenuPage } from "./pages/MenuPage.js";
+import { SettingsPage } from "./pages/SettingsPage.js";
 
 const PAGES = {
   menu: MenuPage,
   history: HistoryPage,
   admin: AdminPage,
+  settings: SettingsPage,
   login: LoginPage,
   register: RegisterPage,
   "forgot-password": ForgotPasswordPage,

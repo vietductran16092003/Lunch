@@ -8,19 +8,23 @@ service hay controller.
 from .config import Config
 from .core import Database, EventBroker
 from .repositories import (
+    DeadlineRepository,
     MenuRepository,
     OrderRepository,
     RestaurantRepository,
+    ScheduleRepository,
     UserRepository,
 )
 from .services import (
     AuthService,
     DashboardService,
+    DeadlineService,
     GrabService,
     MenuService,
     OrderService,
     ReportService,
     RestaurantService,
+    ScheduleService,
     UploadService,
 )
 
@@ -38,11 +42,15 @@ class ServiceContainer:
         self.menu_items = MenuRepository(database)
         self.restaurant_repo = RestaurantRepository(database)
         self.order_repo = OrderRepository(database)
+        self.schedule_repo = ScheduleRepository(database)
+        self.deadline_repo = DeadlineRepository(database)
 
         # Tầng nghiệp vụ
         self.grab = GrabService(config)
         self.uploads = UploadService(config)
         self.auth = AuthService(self.users, config)
+        self.schedules = ScheduleService(self.schedule_repo, self.users)
+        self.deadlines = DeadlineService(self.deadline_repo, config, event_broker=events)
         self.restaurants = RestaurantService(self.restaurant_repo, self.grab, events)
         self.menu = MenuService(
             self.menu_items, self.restaurant_repo, self.order_repo, events, config
@@ -50,6 +58,7 @@ class ServiceContainer:
         self.orders = OrderService(
             self.order_repo, self.menu_items, self.users,
             self.restaurant_repo, events, config,
+            deadline_service=self.deadlines,
         )
         self.dashboard = DashboardService(self.order_repo, self.restaurant_repo, config)
         self.reports = ReportService(self.order_repo)
