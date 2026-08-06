@@ -1,0 +1,153 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đặt hàng — Quản trị</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=17">
+</head>
+<body data-page="admin">
+  <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
+  <div id="navbar-placeholder"></div>
+
+  <main class="container" id="main">
+    <h1>Đặt hàng</h1>
+    <p class="subtitle" id="admin-subtitle">Chọn nhà hàng, dựng thực đơn, rồi chốt đơn và đặt trên Grab.</p>
+
+    <!-- Bước 1 — Nhà hàng phải có trước thì mới thêm được món -->
+    <div class="section-head">
+      <h2>1. Nhà hàng trên GrabFood</h2>
+      <p>Dán đường dẫn nhà hàng từ GrabFood để lấy thông tin, kiểm tra lại rồi lưu.</p>
+    </div>
+
+    <form id="restaurant-form" novalidate>
+      <div class="field field-lg">
+        <label for="grab-url">Đường dẫn GrabFood<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="url" id="grab-url" name="grab-url" inputmode="url"
+               placeholder="https://food.grab.com/vn/vi/restaurant/..."
+               aria-describedby="grab-url-help">
+        <span class="helper" id="grab-url-help">Mở GrabFood, vào trang quán rồi sao chép đường dẫn trên trình duyệt.</span>
+      </div>
+      <button type="button" class="ghost" id="grab-fetch-btn">Lấy thông tin</button>
+    </form>
+
+    <div id="restaurant-preview"></div>
+
+    <div id="restaurant-list" style="margin-top:16px;"></div>
+
+    <!-- Bước 2 — Thực đơn, khóa cho đến khi chọn được nhà hàng -->
+    <div class="section-head">
+      <h2>2. Thực đơn hôm nay</h2>
+      <p>Phải chọn nhà hàng trước, sau đó mới thêm được món vào thực đơn.</p>
+    </div>
+
+    <form id="menu-form" novalidate>
+      <div class="field">
+        <label for="item-restaurant">Nhà hàng<span class="required-mark" aria-hidden="true">*</span></label>
+        <select id="item-restaurant" name="item-restaurant" required aria-describedby="item-restaurant-error">
+          <option value="">— Chọn nhà hàng —</option>
+        </select>
+        <span class="field-error" id="item-restaurant-error" role="alert"></span>
+      </div>
+
+      <div class="field">
+        <label for="item-name">Tên món<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="text" id="item-name" name="item-name" required autocomplete="off"
+               aria-describedby="item-name-error">
+        <span class="field-error" id="item-name-error" role="alert"></span>
+      </div>
+
+      <div class="field field-sm">
+        <label for="item-price">Giá (đ)<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="number" id="item-price" name="item-price" min="0" step="1000" required
+               inputmode="numeric" aria-describedby="item-price-error">
+        <span class="field-error" id="item-price-error" role="alert"></span>
+      </div>
+
+      <div class="field field-sm">
+        <label for="item-date">Ngày áp dụng<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="date" id="item-date" name="item-date" required>
+      </div>
+
+      <div class="field field-lg">
+        <label for="item-description">Mô tả</label>
+        <input type="text" id="item-description" name="item-description" autocomplete="off">
+      </div>
+
+      <div class="field field-lg">
+        <label for="item-image">Ảnh món ăn</label>
+        <div class="upload">
+          <input type="file" id="item-image" name="item-image" accept="image/png,image/jpeg,image/webp,image/gif"
+                 aria-describedby="item-image-help">
+          <img id="item-image-preview" class="upload-preview" alt="Xem trước ảnh món ăn" hidden>
+          <div id="item-image-empty" class="upload-empty" aria-hidden="true">Chưa có ảnh</div>
+        </div>
+        <span class="helper" id="item-image-help">PNG, JPG, WEBP hoặc GIF, tối đa 4 MB.</span>
+      </div>
+
+      <button type="submit" id="menu-submit-btn">Thêm món</button>
+      <p id="menu-form-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+
+    <!-- Bước 3 — Bảng điều khiển gộp: tổng hợp theo món + chi tiết theo nhân viên -->
+    <div class="section-head">
+      <h2 id="dashboard-heading">3. Bảng điều khiển đơn hôm nay</h2>
+      <p>Tổng hợp để đặt trên Grab và chi tiết từng nhân viên để tính tiền, gộp chung một chỗ.</p>
+    </div>
+
+    <!-- Chuyển ngày để xem cả đơn nhân viên đặt trước cho hôm sau -->
+    <div class="date-picker" id="admin-date-picker" role="group" aria-label="Chọn ngày xem đơn" hidden></div>
+
+    <div class="stat-row" id="dashboard-stats"></div>
+
+    <div class="summary-bar">
+      <div class="totals">
+        <span class="stat-value" id="dashboard-total">0 đ</span>
+        <span class="stat-label">Tổng tiền cả nhóm</span>
+      </div>
+      <div class="actions">
+        <a class="link-action" id="export-link" href="#" download>⬇ Tải CSV</a>
+        <button type="button" class="ghost" id="dashboard-refresh-btn">Làm mới</button>
+        <button type="button" class="primary-lg" id="lock-orders-btn">Chốt đơn &amp; đặt trên Grab</button>
+      </div>
+    </div>
+
+    <p id="lock-orders-message" role="status" aria-live="polite"></p>
+
+    <div id="dashboard-box" aria-busy="true">
+      <div class="skeleton" style="min-height:180px;"></div>
+    </div>
+
+    <!-- Thông tin thanh toán: cấu hình phụ, đặt cuối trang -->
+    <div class="section-head">
+      <h2>Thông tin nhận tiền của bạn</h2>
+      <p>Nhân viên nhìn thấy số liên hệ và mã QR này khi họ chuyển khoản cho bạn.</p>
+    </div>
+
+    <form id="payment-info-form" novalidate>
+      <div class="field">
+        <label for="admin-phone">Số điện thoại / Zalo</label>
+        <input type="tel" id="admin-phone" name="admin-phone" inputmode="tel" autocomplete="tel">
+      </div>
+
+      <div class="field field-lg">
+        <label for="admin-qr-file">Ảnh mã QR ngân hàng</label>
+        <div class="upload">
+          <input type="file" id="admin-qr-file" name="admin-qr-file"
+                 accept="image/png,image/jpeg,image/webp" aria-describedby="admin-qr-help">
+          <img id="qr-preview-img" class="upload-preview" alt="Xem trước mã QR nhận tiền" hidden>
+          <div id="qr-preview-empty" class="upload-empty" aria-hidden="true">Chưa có QR</div>
+        </div>
+        <span class="helper" id="admin-qr-help">Ảnh QR sẽ hiện trong hộp thanh toán của nhân viên.</span>
+      </div>
+
+      <button type="submit">Lưu thông tin</button>
+      <p id="payment-info-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+  </main>
+  <script type="module" src="js/main.js?v=17"></script>
+</body>
+</html>

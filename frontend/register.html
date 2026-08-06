@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng ký</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=17">
+</head>
+<body data-page="register">
+  <main class="login-box">
+    <h1>Tạo tài khoản</h1>
+    <p class="subtitle" id="register-subtitle">Dùng email nội bộ công ty để đăng ký.</p>
+
+    <form id="register-form" novalidate>
+      <div class="field">
+        <label for="reg-name">Họ và tên<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="text" id="reg-name" name="reg-name" required autocomplete="name"
+               aria-describedby="reg-name-error">
+        <span class="field-error" id="reg-name-error" role="alert"></span>
+      </div>
+
+      <div class="field">
+        <label for="reg-email">Email công ty<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="email" id="reg-email" name="reg-email" required autocomplete="username"
+               inputmode="email" autocapitalize="none"
+               aria-describedby="reg-email-help reg-email-error">
+        <span class="helper" id="reg-email-help">Chỉ chấp nhận email @fpt.com.</span>
+        <span class="field-error" id="reg-email-error" role="alert"></span>
+      </div>
+
+      <div class="field">
+        <label for="reg-password">Mật khẩu<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="password" id="reg-password" name="reg-password" required
+               autocomplete="new-password" aria-describedby="reg-password-help reg-password-error">
+        <span class="helper" id="reg-password-help">Ít nhất 8 ký tự.</span>
+        <span class="field-error" id="reg-password-error" role="alert"></span>
+      </div>
+
+      <div class="field">
+        <label for="reg-password2">Nhập lại mật khẩu<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="password" id="reg-password2" name="reg-password2" required
+               autocomplete="new-password" aria-describedby="reg-password2-error">
+        <span class="field-error" id="reg-password2-error" role="alert"></span>
+      </div>
+
+      <p id="register-error" class="message-error" role="alert" style="display:none; margin:0;"></p>
+
+      <button type="submit">Đăng ký</button>
+    </form>
+
+    <div id="google-block" hidden>
+      <div class="auth-divider">hoặc</div>
+      <div id="google-signin-wrap"></div>
+    </div>
+
+    <p class="auth-switch">
+      Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+    </p>
+  </main>
+  <script type="module" src="js/main.js?v=17"></script>
+</body>
+</html>

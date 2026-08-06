@@ -1,0 +1,53 @@
+import { Dom } from "../core/Dom.js";
+import { Formatter } from "../core/Formatter.js";
+
+/** Dải chọn ngày. Chỉ hiện khi có từ 2 ngày trở lên để đỡ rối. */
+export class DatePicker {
+  constructor(containerId, onSelect) {
+    this.container = Dom.byId(containerId);
+    this.onSelect = onSelect;
+  }
+
+  render(days, selectedDate, today) {
+    if (!this.container) return;
+
+    if (!days || days.length < 2) {
+      this.container.hidden = true;
+      Dom.clear(this.container);
+      return;
+    }
+
+    this.container.hidden = false;
+    Dom.clear(this.container);
+    days.forEach((day) => {
+      this.container.appendChild(this.buildChip(day, selectedDate, today));
+    });
+  }
+
+  buildChip(day, selectedDate, today) {
+    const label = Formatter.dayLabel(day.date, today);
+    const short = Formatter.shortDate(day.date);
+    const state = day.closed ? "đã quá giờ chốt" : "còn đặt được";
+
+    const chip = Dom.el(
+      "button",
+      {
+        type: "button",
+        class: `date-chip${day.closed ? " is-closed" : ""}`,
+        "aria-pressed": String(day.date === selectedDate),
+        "aria-label":
+          `${label} ${short}, ${day.item_count} món, ${state}` +
+          (day.has_order ? ", bạn đã đặt" : ""),
+      },
+      Dom.el("span", { class: "chip-day", text: `${label} · ${short}` }),
+      Dom.el("span", {
+        class: "chip-meta",
+        text: day.closed ? `Đã chốt · ${day.item_count} món` : `${day.item_count} món`,
+      }),
+      day.has_order ? Dom.el("span", { class: "chip-flag", text: "✓ ĐÃ ĐẶT" }) : null
+    );
+
+    chip.addEventListener("click", () => this.onSelect(day.date));
+    return chip;
+  }
+}

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# Ảnh do quản trị viên tải lên khi chạy — không đưa vào repo
+backend/uploads/*
+!backend/uploads/.gitkeep

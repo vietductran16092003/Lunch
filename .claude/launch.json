@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lunch-frontend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8080",
+        "--directory",
+        "D:\\DucCowork\\Research\\03_Projects\\personal\\lunch-app\\frontend"
+      ],
+      "port": 8080
+    }
+  ]
+}
