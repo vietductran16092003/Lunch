@@ -164,14 +164,14 @@ export class HistoryList {
     );
   }
 
-  /** Chỉ hiện nút khi ít nhất một món của đơn còn bán ở đúng quán đó hôm nay. */
+  /** Luôn hiện nút, nhưng khoá lại khi không còn món nào của đơn bán ở đúng
+   * quán đó hôm nay — để người dùng biết nút này tồn tại, chỉ là chưa dùng được. */
   buildReorderButton(order, todayKeys) {
-    if (todayKeys) {
-      const stillAvailable = (order.items || []).some((item) =>
-        todayKeys.has(HistoryList.itemKey(item.name, item.restaurant_name))
-      );
-      if (!stillAvailable) return null;
-    }
+    const stillAvailable = todayKeys
+      ? (order.items || []).some((item) =>
+          todayKeys.has(HistoryList.itemKey(item.name, item.restaurant_name))
+        )
+      : true;
 
     const button = Dom.el("button", {
       type: "button",
@@ -179,6 +179,10 @@ export class HistoryList {
       style: "margin-top:12px;",
       text: "Đặt lại cho hôm nay",
       "aria-label": `Đặt lại đơn ngày ${order.order_date} cho hôm nay`,
+      disabled: !stillAvailable,
+      title: stillAvailable
+        ? null
+        : "Hôm nay không còn món nào của đơn này ở đúng quán đó",
     });
     button.addEventListener("click", () => this.onReorder(order, button));
     return button;
