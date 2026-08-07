@@ -111,7 +111,8 @@ export class MenuGrid {
       .toLowerCase();
   }
 
-  /** Ẩn/hiện món theo từ khoá tên/mô tả/thẻ — không mất số lượng đã chọn (Phase 4). */
+  /** Ẩn/hiện món theo đúng TÊN món — không lọc theo mô tả/thẻ nữa, để kết quả
+   * chỉ còn món trùng tên như yêu cầu. Không mất số lượng đã chọn (Phase 4). */
   filter(query) {
     if (!this.container) return;
     const needle = MenuGrid.normalize(query.trim());
@@ -119,9 +120,7 @@ export class MenuGrid {
     this.container.querySelectorAll(".menu-item").forEach((card) => {
       const item = this.items.find((m) => m.id === parseInt(card.dataset.id, 10));
       if (!item) return;
-      const haystack = MenuGrid.normalize(
-        [item.name, item.description, item.tags].filter(Boolean).join(" ")
-      );
+      const haystack = MenuGrid.normalize(item.name || "");
       card.hidden = Boolean(needle) && !haystack.includes(needle);
     });
   }
