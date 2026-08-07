@@ -1,6 +1,7 @@
 import { ApiClient } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
 import { Formatter } from "../core/Formatter.js";
+import { NutritionWarnings } from "../core/nutritionWarnings.js";
 
 const MAX_QUANTITY = 20;
 
@@ -73,6 +74,17 @@ export class MenuGrid {
     );
 
     if (item.description) card.appendChild(Dom.el("p", { text: item.description }));
+
+    const warnings = NutritionWarnings.detect(item);
+    if (warnings.length) {
+      card.appendChild(
+        Dom.el(
+          "div",
+          { class: "nutrition-badges" },
+          ...warnings.map((w) => Dom.el("span", { class: `nutrition-badge is-${w.type}`, text: w.label }))
+        )
+      );
+    }
 
     if (item.restaurant_name) {
       const line = Dom.el("div", { class: "restaurant-line", text: item.restaurant_name });

@@ -3,6 +3,7 @@
 from flask import Blueprint, current_app, jsonify, request
 
 from ..core.errors import UnauthorizedError
+from ..core.rate_limit import rate_limit
 from ..core.security import SessionUser, require_login
 
 
@@ -22,12 +23,14 @@ def build_auth_blueprint(services) -> Blueprint:
         return jsonify(auth.auth_options())
 
     @bp.post("/login")
+    @rate_limit("login", max_calls=10, window_seconds=60)
     def login():
         data = request.get_json(silent=True) or {}
         user = auth.login(data.get("email", ""), data.get("password", ""))
         return jsonify(_session_payload(user))
 
     @bp.post("/register")
+    @rate_limit("register", max_calls=5, window_seconds=3600)
     def register():
         data = request.get_json(silent=True) or {}
         user = auth.register(
@@ -45,6 +48,7 @@ def build_auth_blueprint(services) -> Blueprint:
         return jsonify(payload)
 
     @bp.post("/password/forgot")
+    @rate_limit("password_forgot", max_calls=5, window_seconds=3600)
     def password_forgot():
         """Tạo link đặt lại mật khẩu.
 

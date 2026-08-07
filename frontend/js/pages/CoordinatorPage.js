@@ -43,7 +43,7 @@ export class CoordinatorPage extends BasePage {
     await this.loadDates();
     await Promise.all([
       this.loadGrouped(), this.loadSummary(), this.loadReminders(),
-      this.loadPoll(), this.loadEmployees(), this.loadAssistMenu(),
+      this.loadPoll(), this.loadEmployees(), this.loadAssistMenu(), this.loadPredict(),
     ]);
 
     this.listen({
@@ -77,8 +77,30 @@ export class CoordinatorPage extends BasePage {
     this.datePicker.render(this.availableDates, this.date, this.today);
     await Promise.all([
       this.loadGrouped(), this.loadSummary(), this.loadReminders(),
-      this.loadPoll(), this.loadAssistMenu(),
+      this.loadPoll(), this.loadAssistMenu(), this.loadPredict(),
     ]);
+  }
+
+  async loadPredict() {
+    const box = Dom.byId("ai-predict-box");
+    if (!box) return;
+    try {
+      const data = await api.get(`/ai/predict?date=${encodeURIComponent(this.date)}`);
+      Dom.clear(box);
+      box.appendChild(Dom.el("p", { style: "margin:0;", text: data.message }));
+      if (data.has_data && data.likely_items.length) {
+        box.appendChild(
+          Dom.el(
+            "p",
+            { style: "margin:8px 0 0;" },
+            "Món hay được đặt: " +
+              data.likely_items.map((i) => `${i.name} (~${i.avg_quantity})`).join(", ")
+          )
+        );
+      }
+    } catch (err) {
+      Dom.clear(box).appendChild(Dom.emptyState("⚠️", "Không tải được dự đoán."));
+    }
   }
 
   async loadSummary() {

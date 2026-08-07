@@ -43,6 +43,11 @@ def build_ai_blueprint(services) -> Blueprint:
             request.args.get("start"), request.args.get("end")
         ))
 
+    @bp.get("/predict")
+    @require_role(Role.COORDINATOR, Role.ADMIN)
+    def predict():
+        return jsonify(ai.predict_demand(request.args.get("date")))
+
     @bp.get("/reminders")
     @require_role(Role.COORDINATOR, Role.ADMIN)
     def reminders():

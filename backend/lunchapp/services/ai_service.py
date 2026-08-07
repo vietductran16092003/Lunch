@@ -264,6 +264,61 @@ class AiService:
             "report_text": " ".join(lines),
         }
 
+    # ===== Dự đoán nhu cầu (Phase 5) =====
+
+    WEEKDAY_LABELS = (
+        "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ nhật",
+    )
+
+    def predict_demand(self, target_date=None, lookback_days: int = 60) -> dict:
+        """Ước lượng số đơn dự kiến dựa trên các ngày cùng thứ trong quá khứ.
+
+        Chỉ so cùng thứ trong tuần (ví dụ thứ Hai so với thứ Hai) vì thói quen ăn
+        uống lệch nhiều theo ngày trong tuần hơn là theo ngày trong tháng.
+        """
+        target_date = Clock.date_or_today(target_date)
+        target_weekday = date.fromisoformat(target_date).weekday()
+        weekday_label = self.WEEKDAY_LABELS[target_weekday]
+
+        order_counts = []
+        item_totals = {}
+        for i in range(1, lookback_days + 1):
+            day = Clock.add_days(target_date, -i)
+            if date.fromisoformat(day).weekday() != target_weekday:
+                continue
+            orders = self.orders.list_for_date(day)
+            if not orders:
+                continue
+            order_counts.append(len(orders))
+            for order in orders:
+                for item in order.items:
+                    item_totals[item.name] = item_totals.get(item.name, 0) + item.quantity
+
+        if not order_counts:
+            return {
+                "date": target_date, "weekday_label": weekday_label, "has_data": False,
+                "message": f"Chưa có dữ liệu {weekday_label} trước đó để dự đoán.",
+            }
+
+        sample_size = len(order_counts)
+        predicted_orders = round(sum(order_counts) / sample_size)
+        likely_items = sorted(item_totals.items(), key=lambda kv: -kv[1])[:5]
+
+        return {
+            "date": target_date,
+            "weekday_label": weekday_label,
+            "has_data": True,
+            "sample_size": sample_size,
+            "predicted_orders": predicted_orders,
+            "likely_items": [
+                {"name": n, "avg_quantity": round(c / sample_size, 1)} for n, c in likely_items
+            ],
+            "message": (
+                f"Dựa trên {sample_size} {weekday_label} gần đây, dự kiến khoảng "
+                f"{predicted_orders} đơn cho ngày {target_date}."
+            ),
+        }
+
     # ===== Nhắc tự động: ai chưa đặt trước giờ chốt (mã 3.5x) =====
 
     def pending_reminders(self, target_date=None) -> dict:
