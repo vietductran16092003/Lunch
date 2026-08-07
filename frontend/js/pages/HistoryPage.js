@@ -21,8 +21,14 @@ export class HistoryPage extends BasePage {
 
   async load() {
     try {
-      const data = await api.get("/orders/history");
-      this.list.render(data.history);
+      const [history, menu] = await Promise.all([
+        api.get("/orders/history"),
+        api.get("/menu"),
+      ]);
+      const todayKeys = new Set(
+        (menu.items || []).map((item) => HistoryList.itemKey(item.name, item.restaurant_name))
+      );
+      this.list.render(history.history, todayKeys);
     } catch (err) {
       this.list.showError("Không tải được lịch sử.");
     }

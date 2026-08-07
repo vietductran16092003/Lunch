@@ -176,9 +176,10 @@ h1 { font-size: 24px; line-height: 1.25; margin: 0 0 var(--space-1); font-weight
 .subtitle { color: var(--text-secondary); font-size: 14px; margin: 0 0 var(--space-5); }
 
 h2 {
-  font-size: 17px;
+  font-size: 19px;
   margin: var(--space-6) 0 var(--space-3);
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 h3 { font-size: 15px; margin: 0 0 var(--space-2); font-weight: 600; }
@@ -493,6 +494,9 @@ form {
   gap: var(--space-3);
   align-items: flex-end;
 }
+
+/* Nút chức năng chính của form luôn dồn về bên phải, tách khỏi các ô nhập */
+form > button { margin-left: auto; }
 
 /* Mỗi ô nhập là một khối có nhãn riêng — không dùng placeholder thay nhãn */
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 180px; flex: 1 1 180px; }

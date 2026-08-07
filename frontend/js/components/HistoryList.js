@@ -28,7 +28,13 @@ export class HistoryList {
     Dom.clear(this.container).appendChild(Dom.emptyState("⚠️", message));
   }
 
-  render(history) {
+  /** key chuẩn hoá "tên món||tên quán" để so khớp với thực đơn hôm nay. */
+  static itemKey(name, restaurantName) {
+    return `${(name || "").trim().toLowerCase()}||${(restaurantName || "").trim().toLowerCase()}`;
+  }
+
+  /** `todayKeys`: Set các itemKey đang bán hôm nay, dùng để ẩn/hiện nút đặt lại. */
+  render(history, todayKeys = null) {
     if (!this.container) return;
     this.container.setAttribute("aria-busy", "false");
     Dom.clear(this.container);
@@ -39,11 +45,11 @@ export class HistoryList {
     }
 
     history.forEach((order, index) => {
-      this.container.appendChild(this.buildCard(order, index));
+      this.container.appendChild(this.buildCard(order, index, todayKeys));
     });
   }
 
-  buildCard(order, index) {
+  buildCard(order, index, todayKeys) {
     const detailId = `history-detail-${order.id}`;
 
     const summary = Dom.el(
@@ -74,7 +80,7 @@ export class HistoryList {
     detail.append(
       this.buildDetailTable(order),
       this.buildPaymentState(order),
-      this.buildReorderButton(order)
+      this.buildReorderButton(order, todayKeys)
     );
 
     summary.addEventListener("click", () => {
@@ -158,7 +164,15 @@ export class HistoryList {
     );
   }
 
-  buildReorderButton(order) {
+  /** Chỉ hiện nút khi ít nhất một món của đơn còn bán ở đúng quán đó hôm nay. */
+  buildReorderButton(order, todayKeys) {
+    if (todayKeys) {
+      const stillAvailable = (order.items || []).some((item) =>
+        todayKeys.has(HistoryList.itemKey(item.name, item.restaurant_name))
+      );
+      if (!stillAvailable) return null;
+    }
+
     const button = Dom.el("button", {
       type: "button",
       class: "subtle",
