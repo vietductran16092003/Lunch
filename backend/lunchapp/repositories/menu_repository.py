@@ -55,6 +55,34 @@ class MenuRepository(BaseRepository):
         )
         return {r["id"] for r in rows}
 
+    def find_matching(self, names: list, target_date: str) -> dict:
+        """Khớp món theo TÊN sang thực đơn của một ngày khác (mã 3.3 - reorder).
+
+        Mỗi ngày là một dòng `menu_items` riêng nên `menu_item_id` của đơn cũ
+        không dùng lại được cho ngày mới; phải tìm món "cùng tên" đang bán vào
+        `target_date`. Trả về dict {tên món (chuẩn hoá) -> MenuItem} để nơi gọi
+        tự tra cứu, món trùng tên thì lấy dòng đầu tiên (theo restaurant/name).
+        Tên được so khớp không phân biệt hoa/thường và bỏ khoảng trắng thừa vì
+        đây chỉ là gợi ý tiện lợi, không phải khoá định danh.
+        """
+        if not names:
+            return {}
+        placeholders = ",".join("?" * len(names))
+        rows = self._fetch_all(
+            _SELECT_WITH_RESTAURANT
+            + f" WHERE menu_items.available_date = ? "
+              f"AND LOWER(TRIM(menu_items.name)) IN ({placeholders}) "
+              "ORDER BY restaurants.name, menu_items.name",
+            (target_date, *[str(n).strip().lower() for n in names]),
+        )
+        items = MenuItem.from_rows(rows)
+        matched = {}
+        for item in items:
+            key = (item.name or "").strip().lower()
+            # Trùng tên ở nhiều quán thì giữ lại kết quả đầu tiên tìm thấy
+            matched.setdefault(key, item)
+        return matched
+
     def create(self, item: MenuItem) -> int:
         return self._insert(
             "INSERT INTO menu_items "

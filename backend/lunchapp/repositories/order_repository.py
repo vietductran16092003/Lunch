@@ -5,7 +5,8 @@ from ..models import Order, OrderItem
 from .base import BaseRepository
 
 _ORDER_COLUMNS = (
-    "id, user_id, order_date, status, payment_method, locked_at, paid_at, payment_confirmed_at"
+    "id, user_id, order_date, status, payment_method, locked_at, paid_at, "
+    "payment_confirmed_at, shipping_share"
 )
 
 
@@ -40,7 +41,7 @@ class OrderRepository(BaseRepository):
         return OrderItem.from_rows(
             self._fetch_all(
                 """
-                SELECT order_items.menu_item_id, order_items.quantity,
+                SELECT order_items.menu_item_id, order_items.quantity, order_items.note,
                        menu_items.name, menu_items.price, menu_items.image_url,
                        restaurants.name AS restaurant_name
                 FROM order_items
@@ -65,6 +66,54 @@ class OrderRepository(BaseRepository):
             (user_id, from_date),
         )
         return {r["order_date"] for r in rows}
+
+    def most_recent_for_user(self, user_id, exclude_date: str | None = None) -> Order | None:
+        """Đơn gần nhất của một người, dùng để đặt lại nhanh (mã 3.3).
+
+        `exclude_date` để không lấy nhầm chính đơn của hôm nay khi người dùng
+        đang muốn chép lại đơn của một hôm trước.
+        """
+        if exclude_date:
+            row = self._fetch_one(
+                f"SELECT {_ORDER_COLUMNS} FROM orders "
+                "WHERE user_id = ? AND order_date != ? ORDER BY order_date DESC, id DESC LIMIT 1",
+                (user_id, exclude_date),
+            )
+        else:
+            row = self._fetch_one(
+                f"SELECT {_ORDER_COLUMNS} FROM orders "
+                "WHERE user_id = ? ORDER BY order_date DESC, id DESC LIMIT 1",
+                (user_id,),
+            )
+        return Order.from_row(row)
+
+    def list_for_date(self, target_date: str) -> list:
+        """Toàn bộ đơn của một ngày, kèm sẵn danh sách món — dùng cho việc gộp
+        theo quán (4.2) và chia ship (4.3), tránh N+1 query."""
+        orders = Order.from_rows(
+            self._fetch_all(
+                f"SELECT {_ORDER_COLUMNS} FROM orders WHERE order_date = ? ORDER BY id",
+                (target_date,),
+            )
+        )
+        for order in orders:
+            order.items = self.load_items(order.id)
+        return orders
+
+    def set_shipping_shares(self, shares: dict):
+        """Ghi phần ship đã chia cho nhiều đơn cùng lúc (mã 4.3).
+
+        `shares` là {order_id: amount}. Gộp vào một giao dịch để không có
+        khoảnh khắc một phần đơn đã cập nhật, phần còn lại thì chưa.
+        """
+        if not shares:
+            return
+        with self.db.session(commit=True) as conn:
+            cursor = conn.cursor()
+            cursor.executemany(
+                "UPDATE orders SET shipping_share = ? WHERE id = ?",
+                [(amount, order_id) for order_id, amount in shares.items()],
+            )
 
     def known_dates_from(self, from_date: str) -> list:
         """Ngày có thực đơn hoặc có đơn, dùng cho bộ chọn ngày của quản trị viên."""
@@ -97,9 +146,12 @@ class OrderRepository(BaseRepository):
                 quantity = item.get("quantity", 0)
                 if quantity and quantity > 0:
                     cursor.execute(
-                        "INSERT INTO order_items (order_id, menu_item_id, quantity) "
-                        "VALUES (?, ?, ?)",
-                        (order_id, item.get("menu_item_id"), quantity),
+                        "INSERT INTO order_items (order_id, menu_item_id, quantity, note) "
+                        "VALUES (?, ?, ?, ?)",
+                        (
+                            order_id, item.get("menu_item_id"), quantity,
+                            (item.get("note") or "").strip() or None,
+                        ),
                     )
 
     def set_payment_method(self, order_id, payment_method: str):
@@ -186,6 +238,43 @@ class OrderRepository(BaseRepository):
             (target_date,),
         )
         return {r["status"]: r["total"] for r in rows}
+
+    def unconfirmed_rows(self, since_date: str | None = None) -> list:
+        """Mọi dòng đơn đã chốt nhưng CHƯA được xác nhận đã nhận tiền.
+
+        Dùng cho bảng theo dõi nợ (mã 5.6): một người có thể nợ tích luỹ từ
+        nhiều ngày nếu người đặt quên xác nhận, nên mặc định quét mọi ngày chứ
+        không chỉ hôm nay.
+        """
+        params = []
+        date_filter = ""
+        if since_date:
+            date_filter = "AND orders.order_date >= ?"
+            params.append(since_date)
+
+        return self._fetch_all(
+            f"""
+            SELECT users.id AS user_id,
+                   users.name AS user_name,
+                   users.email AS user_email,
+                   orders.id AS order_id,
+                   orders.order_date AS order_date,
+                   orders.status AS status,
+                   orders.shipping_share AS shipping_share,
+                   orders.paid_at AS paid_at,
+                   menu_items.price AS price,
+                   order_items.quantity AS quantity
+            FROM order_items
+            JOIN orders ON order_items.order_id = orders.id
+            JOIN users ON orders.user_id = users.id
+            JOIN menu_items ON order_items.menu_item_id = menu_items.id
+            WHERE orders.status != 'pending'
+              AND orders.payment_confirmed_at IS NULL
+              {date_filter}
+            ORDER BY orders.order_date, users.name
+            """,
+            tuple(params),
+        )
 
     def export_rows(self, target_date: str) -> list:
         return self._fetch_all(

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gom đơn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=20">
+</head>
+<body data-page="coordinator">
+  <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
+  <div id="navbar-placeholder"></div>
+
+  <main class="container" id="main">
+    <h1>Gom đơn</h1>
+    <p class="subtitle">Tổng hợp theo quán để copy vào Grab, và chia phí ship cho những đơn đã chốt.</p>
+
+    <div class="date-picker" id="coordinator-date-picker" role="group" aria-label="Chọn ngày xem đơn" hidden></div>
+
+    <div class="section-head">
+      <h2>Tổng hợp theo quán</h2>
+      <p>Kèm ghi chú của nhân viên để dặn quán, và số lượng để đặt cho đúng.</p>
+    </div>
+
+    <div id="grouped-box" aria-busy="true">
+      <div class="skeleton" style="min-height:160px;"></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Chia phí ship</h2>
+      <p>Chia đều cho các đơn đã chốt trong ngày. Số lẻ dồn vào đơn đầu tiên.</p>
+    </div>
+
+    <form id="shipping-split-form" novalidate>
+      <div class="field field-sm">
+        <label for="shipping-total-fee">Tổng phí ship (đ)<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="number" id="shipping-total-fee" name="shipping-total-fee" min="1" step="1000"
+               inputmode="numeric" required aria-describedby="shipping-fee-error">
+        <span class="field-error" id="shipping-fee-error" role="alert"></span>
+      </div>
+      <button type="submit">Chia đều cho đơn đã chốt</button>
+      <p id="shipping-split-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+
+    <div id="shipping-result"></div>
+  </main>
+
+  <script type="module" src="js/main.js?v=20"></script>
+</body>
+</html>

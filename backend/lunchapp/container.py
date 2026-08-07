@@ -9,6 +9,7 @@ from .config import Config
 from .core import Database, EventBroker
 from .repositories import (
     DeadlineRepository,
+    FundRepository,
     MenuRepository,
     OrderRepository,
     RestaurantRepository,
@@ -19,6 +20,7 @@ from .services import (
     AuthService,
     DashboardService,
     DeadlineService,
+    FundService,
     GrabService,
     MenuService,
     OrderService,
@@ -44,6 +46,7 @@ class ServiceContainer:
         self.order_repo = OrderRepository(database)
         self.schedule_repo = ScheduleRepository(database)
         self.deadline_repo = DeadlineRepository(database)
+        self.fund_repo = FundRepository(database)
 
         # Tầng nghiệp vụ
         self.grab = GrabService(config)
@@ -62,6 +65,9 @@ class ServiceContainer:
         )
         self.dashboard = DashboardService(self.order_repo, self.restaurant_repo, config)
         self.reports = ReportService(self.order_repo)
+        self.fund = FundService(
+            self.fund_repo, self.order_repo, self.users, events, config
+        )
 
     @classmethod
     def build(cls, config=Config) -> "ServiceContainer":

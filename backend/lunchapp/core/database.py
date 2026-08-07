@@ -52,6 +52,7 @@ class Database:
             self._create_indexes(cursor)
             self._migrate_suppliers_to_restaurants(cursor)
             self._seed_demo_data(cursor)
+            self._seed_fund(cursor)
             # Chạy sau cùng: cần users đã có (kể cả dữ liệu seed) mới suy được vai trò
             self._migrate_roles(cursor)
 
@@ -118,8 +119,33 @@ class Database:
                 order_id INTEGER NOT NULL,
                 menu_item_id INTEGER NOT NULL,
                 quantity INTEGER NOT NULL DEFAULT 1,
+                note TEXT,
                 FOREIGN KEY (order_id) REFERENCES orders (id),
                 FOREIGN KEY (menu_item_id) REFERENCES menu_items (id)
+            )
+        """)
+
+        # Quỹ chung: bảng một dòng duy nhất (id luôn = 1) để đọc số dư nhanh mà
+        # không phải cộng dồn toàn bộ fund_transactions mỗi lần hỏi.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS fund (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                balance INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT
+            )
+        """)
+
+        # Sổ đối soát: mỗi dòng là một lần nạp/rút, không sửa/xoá được sau khi
+        # ghi — muốn điều chỉnh thì ghi thêm một dòng bù trừ, giữ đúng vết kiểm toán.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS fund_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                note TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """)
 
@@ -168,8 +194,12 @@ class Database:
         for column, ddl in [
             ("payment_method", "TEXT DEFAULT 'cash'"), ("locked_at", "TEXT"),
             ("paid_at", "TEXT"), ("payment_confirmed_at", "TEXT"),
+            # Phần ship chia đều cho đơn này (mã 4.3) — mặc định 0 cho đơn cũ
+            ("shipping_share", "INTEGER DEFAULT 0"),
         ]:
             self._add_column_if_missing(cursor, "orders", column, ddl)
+
+        self._add_column_if_missing(cursor, "order_items", "note", "TEXT")
 
     def _create_indexes(self, cursor):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_reset ON users (reset_token)")
@@ -184,6 +214,13 @@ class Database:
             "CREATE INDEX IF NOT EXISTS idx_coordinator_schedule_user "
             "ON coordinator_schedule (user_id)"
         )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_fund_tx_created ON fund_transactions (created_at)"
+        )
+
+    def _seed_fund(self, cursor):
+        """Dòng số dư quỹ khởi tạo — chạy trước mọi thao tác đọc/ghi quỹ."""
+        cursor.execute("INSERT OR IGNORE INTO fund (id, balance, updated_at) VALUES (1, 0, NULL)")
 
     def _migrate_roles(self, cursor):
         """Sinh dữ liệu user_roles lần đầu từ cột is_admin đang có.

@@ -20,6 +20,12 @@ export const ROLE_HINTS = {
 
 export const roleLabel = (role) => ROLE_LABELS[role] || role;
 
+/** true nếu `user` (đối tượng trả về từ /api/me) mang ít nhất một trong các vai trò. */
+export function hasAnyRole(user, roles) {
+  if (!user || !Array.isArray(user.roles)) return false;
+  return roles.some((role) => user.roles.includes(role));
+}
+
 /** Thẻ nhãn vai trò, dùng chung ở nhiều màn hình. */
 export function roleTagClass(role) {
   return `role-tag is-${role}`;

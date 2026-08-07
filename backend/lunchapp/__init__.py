@@ -14,6 +14,8 @@ from flask_cors import CORS
 from .api import (
     build_admin_blueprint,
     build_auth_blueprint,
+    build_coordinator_blueprint,
+    build_fund_blueprint,
     build_menu_blueprint,
     build_order_blueprint,
     build_role_blueprint,
@@ -48,6 +50,8 @@ def create_app(config=Config, container: ServiceContainer | None = None) -> Flas
     app.register_blueprint(build_order_blueprint(services))
     app.register_blueprint(build_admin_blueprint(services))
     app.register_blueprint(build_role_blueprint(services))
+    app.register_blueprint(build_coordinator_blueprint(services))
+    app.register_blueprint(build_fund_blueprint(services))
 
     return app
 

@@ -10,15 +10,19 @@ import {
   RegisterPage,
   ResetPasswordPage,
 } from "./pages/AuthPages.js";
+import { CoordinatorPage } from "./pages/CoordinatorPage.js";
 import { HistoryPage } from "./pages/HistoryPage.js";
 import { MenuPage } from "./pages/MenuPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
+import { TreasuryPage } from "./pages/TreasuryPage.js";
 
 const PAGES = {
   menu: MenuPage,
   history: HistoryPage,
   admin: AdminPage,
   settings: SettingsPage,
+  coordinator: CoordinatorPage,
+  treasury: TreasuryPage,
   login: LoginPage,
   register: RegisterPage,
   "forgot-password": ForgotPasswordPage,

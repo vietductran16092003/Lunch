@@ -212,11 +212,30 @@ export class MenuPage extends BasePage {
     const list = Dom.el("ul", { style: "margin:0; padding-left:18px;" });
     this.order.items.forEach((item) => {
       list.appendChild(
-        Dom.el("li", {
-          text: `${item.name} × ${item.quantity} — ${Formatter.money(item.price * item.quantity)}`,
-        })
+        Dom.el(
+          "li",
+          {},
+          `${item.name} × ${item.quantity} — ${Formatter.money(item.price * item.quantity)}`,
+          item.note
+            ? Dom.el("span", { class: "item-note", text: ` (${item.note})` })
+            : null
+        )
       );
     });
+
+    const totalLine =
+      this.order.shipping_share > 0
+        ? Dom.el(
+            "div",
+            { style: "text-align:right;" },
+            Dom.el("strong", { class: "mono", text: Formatter.money(this.order.total_cost) }),
+            Dom.el("div", {
+              class: "subtitle",
+              style: "margin:0;",
+              text: `gồm ${Formatter.money(this.order.shipping_share)} tiền ship`,
+            })
+          )
+        : Dom.el("strong", { class: "mono", text: Formatter.money(this.order.total_cost) });
 
     box.append(
       Dom.el(
@@ -226,7 +245,7 @@ export class MenuPage extends BasePage {
           class: `badge ${this.order.status}`,
           text: this.order.status_label,
         }),
-        Dom.el("strong", { class: "mono", text: Formatter.money(this.order.total_cost) })
+        totalLine
       ),
       list,
       Dom.el("p", {
@@ -317,7 +336,11 @@ export class MenuPage extends BasePage {
     Dom.setBusy(button, true, "Đang gửi đơn");
     try {
       await api.post("/orders", {
-        items: selection.map((i) => ({ menu_item_id: i.menu_item_id, quantity: i.quantity })),
+        items: selection.map((i) => ({
+          menu_item_id: i.menu_item_id,
+          quantity: i.quantity,
+          note: i.note || undefined,
+        })),
         order_date: this.selectedDate,
       });
 

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quỹ chung</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=20">
+</head>
+<body data-page="treasury">
+  <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
+  <div id="navbar-placeholder"></div>
+
+  <main class="container" id="main">
+    <h1>Quỹ chung</h1>
+    <p class="subtitle">Số dư, sổ đối soát và danh sách người còn nợ tiền.</p>
+
+    <div class="stat-row" id="fund-stats"></div>
+
+    <div class="section-head">
+      <h2>Nạp / rút quỹ</h2>
+      <p>Mỗi lần nạp hoặc rút đều được ghi vào sổ đối soát bên dưới, không sửa hay xoá được sau đó.</p>
+    </div>
+
+    <form id="fund-form" novalidate>
+      <div class="field field-sm">
+        <label for="fund-type">Loại giao dịch</label>
+        <select id="fund-type" name="fund-type">
+          <option value="topup">Nạp vào quỹ</option>
+          <option value="withdraw">Rút khỏi quỹ</option>
+        </select>
+      </div>
+      <div class="field field-sm">
+        <label for="fund-amount">Số tiền (đ)<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="number" id="fund-amount" name="fund-amount" min="1" step="1000"
+               inputmode="numeric" required aria-describedby="fund-amount-error">
+        <span class="field-error" id="fund-amount-error" role="alert"></span>
+      </div>
+      <div class="field field-lg">
+        <label for="fund-note">Ghi chú</label>
+        <input type="text" id="fund-note" name="fund-note" placeholder="Lý do nạp/rút" autocomplete="off">
+      </div>
+      <button type="submit">Ghi vào quỹ</button>
+      <p id="fund-form-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+
+    <div class="section-head">
+      <h2>Người còn nợ</h2>
+      <p>Đơn đã chốt nhưng chưa được xác nhận đã nhận tiền, gồm cả phí ship được chia.</p>
+    </div>
+
+    <div id="debts-box" aria-busy="true">
+      <div class="skeleton" style="min-height:120px;"></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Sổ đối soát</h2>
+      <p>50 giao dịch gần nhất, mới nhất trước.</p>
+    </div>
+
+    <div id="ledger-box" aria-busy="true">
+      <div class="skeleton" style="min-height:160px;"></div>
+    </div>
+  </main>
+
+  <script type="module" src="js/main.js?v=20"></script>
+</body>
+</html>

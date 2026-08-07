@@ -12,8 +12,10 @@ const STATUS_BADGE = ["pending", "closed", "ordered", "completed"];
 
 /** Danh sách lịch sử, mỗi đơn mở ra được bảng chi tiết hóa đơn. */
 export class HistoryList {
-  constructor(containerId = "history-list") {
+  constructor(containerId = "history-list", { onReorder } = {}) {
     this.container = Dom.byId(containerId);
+    // Trang gọi API thật; component chỉ lo hiển thị (mã 3.3 — đặt lại đơn cũ)
+    this.onReorder = onReorder || (() => {});
   }
 
   static statusClass(status) {
@@ -69,7 +71,11 @@ export class HistoryList {
     );
 
     const detail = Dom.el("div", { class: "history-detail", id: detailId, hidden: true });
-    detail.append(this.buildDetailTable(order), this.buildPaymentState(order));
+    detail.append(
+      this.buildDetailTable(order),
+      this.buildPaymentState(order),
+      this.buildReorderButton(order)
+    );
 
     summary.addEventListener("click", () => {
       const open = summary.getAttribute("aria-expanded") === "true";
@@ -100,6 +106,9 @@ export class HistoryList {
           })
         );
       }
+      if (item.note) {
+        name.appendChild(Dom.el("div", { class: "item-note", text: item.note }));
+      }
 
       tbody.appendChild(
         Dom.el(
@@ -120,24 +129,45 @@ export class HistoryList {
         "<th scope='col' class='num'>Thành tiền</th></tr></thead>",
     });
     table.appendChild(tbody);
-    table.appendChild(
-      Dom.el(
-        "tfoot",
-        {},
+
+    const tfoot = Dom.el("tfoot");
+    if (order.shipping_share > 0) {
+      tfoot.appendChild(
         Dom.el(
           "tr",
           {},
-          Dom.el("td", { colspan: "3", text: "Tổng cộng" }),
-          Dom.el("td", { class: "num mono", text: Formatter.money(order.total_cost) })
+          Dom.el("td", { colspan: "3", text: "Phí ship được chia" }),
+          Dom.el("td", { class: "num mono", text: Formatter.money(order.shipping_share) })
         )
+      );
+    }
+    tfoot.appendChild(
+      Dom.el(
+        "tr",
+        {},
+        Dom.el("td", { colspan: "3", text: "Tổng cộng" }),
+        Dom.el("td", { class: "num mono", text: Formatter.money(order.total_cost) })
       )
     );
+    table.appendChild(tfoot);
 
     return Dom.el(
       "div",
       { class: "table-wrap", style: "border:none; margin-bottom:0;" },
       table
     );
+  }
+
+  buildReorderButton(order) {
+    const button = Dom.el("button", {
+      type: "button",
+      class: "subtle",
+      style: "margin-top:12px;",
+      text: "Đặt lại cho hôm nay",
+      "aria-label": `Đặt lại đơn ngày ${order.order_date} cho hôm nay`,
+    });
+    button.addEventListener("click", () => this.onReorder(order, button));
+    return button;
   }
 
   buildPaymentState(order) {

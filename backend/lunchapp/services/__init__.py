@@ -1,6 +1,7 @@
 from .auth_service import AuthService, GoogleTokenVerifier
 from .dashboard_service import DashboardService, EmployeeOrderSummary
 from .deadline_service import DeadlineService
+from .fund_service import FundService
 from .grab_service import GrabService
 from .menu_service import MenuService
 from .order_service import OrderService
@@ -15,6 +16,7 @@ __all__ = [
     "DashboardService",
     "DeadlineService",
     "EmployeeOrderSummary",
+    "FundService",
     "GrabService",
     "MenuService",
     "OrderService",

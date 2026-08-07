@@ -1,5 +1,6 @@
 import { api } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
+import { hasAnyRole } from "../core/roles.js";
 
 /** Thanh điều hướng dùng chung, tự tải người dùng hiện tại. */
 export class Navbar {
@@ -20,7 +21,9 @@ export class Navbar {
         </nav>
         <div id="user-info">
           <span id="user-name"></span>
-          <!-- Link quản trị nằm ngoài thanh điều hướng chính, chỉ admin mới thấy -->
+          <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
+          <a href="coordinator.html" id="coordinator-link" hidden>Gom đơn</a>
+          <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
           <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
           <a href="#" id="logout-link">Đăng xuất</a>
         </div>
@@ -35,7 +38,7 @@ export class Navbar {
 
   highlightActive() {
     const current = window.location.pathname.split("/").pop() || "index.html";
-    document.querySelectorAll(".navbar nav a, .navbar #admin-link").forEach((link) => {
+    document.querySelectorAll(".navbar nav a, #user-info a[href]").forEach((link) => {
       if (link.getAttribute("href") === current) {
         link.classList.add("active");
         // Trình đọc màn hình biết đang ở trang nào, không chỉ dựa vào màu nền
@@ -48,7 +51,17 @@ export class Navbar {
     try {
       this.user = await api.get("/me");
       Dom.setText("user-name", this.user.name);
+
       if (this.user.is_admin) Dom.byId("admin-link").hidden = false;
+      // Admin thấy hết mọi link — vừa để tiện thao tác, vừa vì admin có đủ quyền
+      // gọi mọi endpoint đứng sau các link đó.
+      if (hasAnyRole(this.user, ["coordinator", "admin"])) {
+        Dom.byId("coordinator-link").hidden = false;
+      }
+      if (hasAnyRole(this.user, ["treasurer", "admin"])) {
+        Dom.byId("treasury-link").hidden = false;
+      }
+
       return this.user;
     } catch (err) {
       window.location.href = "login.html";

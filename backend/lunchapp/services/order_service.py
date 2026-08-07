@@ -96,6 +96,46 @@ class OrderService:
 
         return {"id": order_id, "status": OrderStatus.PENDING, "order_date": target_date}
 
+    def reorder_from(self, user_id, source_order_id, target_date=None) -> dict:
+        """Đặt lại nhanh từ một đơn cũ của chính mình (mã 3.3).
+
+        Món tham chiếu theo menu_item_id của ngày cũ không dùng lại được cho
+        ngày mới vì mỗi ngày là một dòng menu_items riêng, nên phải khớp theo
+        TÊN món sang thực đơn của target_date. Món hết bán ở ngày mới thì bỏ
+        qua (không làm hỏng cả thao tác), báo lại cho người dùng qua
+        skipped_items.
+        """
+        source = self._load_own_order(source_order_id, user_id)
+        self.orders.with_items(source)
+        target_date = Clock.date_or_today(target_date)
+
+        if not source.items:
+            raise ValidationError("Đơn cũ không có món nào để đặt lại")
+
+        names = [i.name for i in source.items if i.name]
+        matched_by_name = self.menu.find_matching(names, target_date)
+
+        matched_items = []
+        skipped_items = []
+        for old_item in source.items:
+            key = (old_item.name or "").strip().lower()
+            new_item = matched_by_name.get(key)
+            if new_item is None:
+                skipped_items.append(old_item.name)
+                continue
+            matched_items.append({
+                "menu_item_id": new_item.id,
+                "quantity": old_item.quantity,
+                "note": old_item.note,
+            })
+
+        if not matched_items:
+            raise ValidationError("Không còn món nào trong đơn cũ còn bán hôm nay")
+
+        result = self.place_order(user_id, matched_items, target_date)
+        result["skipped_items"] = skipped_items
+        return result
+
     def update_order(self, order_id, user_id, items: list) -> dict:
         order = self._load_own_order(order_id, user_id)
         # Giờ chốt tính theo ngày của chính đơn đó, không phải theo hôm nay
@@ -221,6 +261,52 @@ class OrderService:
             "locked_count": locked_count,
             "grab_links": links,
         }
+
+    def grouped_by_restaurant(self, target_date=None) -> dict:
+        """Gộp toàn bộ đơn một ngày theo quán, cho coordinator copy tay vào Grab (mã 4.2).
+
+        Khác với dashboard hiện có (nhìn phẳng theo món): ở đây phải trả về
+        dạng cây quán -> món, kèm ghi chú (mã 3.5) gộp từ mọi đơn để coordinator
+        biết cần dặn quán thêm gì. Duyệt bằng Python thuần cho dễ đọc, quy mô
+        app này không cần SQL JOIN phức tạp.
+        """
+        target_date = Clock.date_or_today(target_date)
+        orders = self.orders.list_for_date(target_date)
+
+        # restaurant_name -> {"items": {item_name: {...}}, "grab_url": ...}
+        restaurants = {}
+        for order in orders:
+            for item in order.items:
+                rname = item.restaurant_name or "Không rõ quán"
+                bucket = restaurants.setdefault(rname, {"items": {}, "grab_url": None})
+                entry = bucket["items"].setdefault(
+                    item.name, {"name": item.name, "price": item.price,
+                                "total_quantity": 0, "notes": []}
+                )
+                entry["total_quantity"] += item.quantity
+                note = (item.note or "").strip()
+                if note and note not in entry["notes"]:
+                    entry["notes"].append(note)
+
+        # Lấy id/grab_url theo tên quán từ bảng restaurants (đủ dùng ở quy mô hiện tại)
+        all_restaurants = {r.name: r for r in self.restaurants.list_all()}
+
+        result = []
+        grand_total = 0
+        for rname, bucket in sorted(restaurants.items()):
+            items = sorted(bucket["items"].values(), key=lambda i: i["name"])
+            subtotal = sum(i["price"] * i["total_quantity"] for i in items)
+            grand_total += subtotal
+            match = all_restaurants.get(rname)
+            result.append({
+                "restaurant_id": match.id if match else None,
+                "restaurant_name": rname,
+                "grab_url": match.grab_url if match else None,
+                "items": items,
+                "subtotal": subtotal,
+            })
+
+        return {"date": target_date, "restaurants": result, "grand_total": grand_total}
 
     def mark_grab_placed(self, target_date=None) -> dict:
         """Chuyển đơn sang trạng thái chờ thanh toán sau khi đã mở Grab."""

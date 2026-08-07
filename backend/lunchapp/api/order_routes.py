@@ -18,6 +18,16 @@ def build_order_blueprint(services) -> Blueprint:
         )
         return jsonify(result), 201
 
+    @bp.post("/reorder/<int:order_id>")
+    @require_login
+    def reorder(order_id):
+        """Đặt lại nhanh từ một đơn cũ của chính mình (mã 3.3)."""
+        data = request.get_json(silent=True) or {}
+        result = orders.reorder_from(
+            SessionUser.id(), order_id, data.get("order_date")
+        )
+        return jsonify(result), 201
+
     @bp.put("/<int:order_id>")
     @require_login
     def update_order(order_id):

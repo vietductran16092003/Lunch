@@ -114,28 +114,48 @@ export class MenuGrid {
       "aria-describedby": `item-${item.id}-name`,
     });
 
+    // Ghi chú riêng cho món này (mã 3.5) — chỉ bật khi đã chọn ít nhất 1 phần,
+    // để tránh gửi ghi chú "mồ côi" cho món không nằm trong đơn.
+    const note = Dom.el("input", {
+      type: "text",
+      class: "note-input",
+      "data-note-for": item.id,
+      placeholder: "Ghi chú: ít cay, không hành…",
+      "aria-label": `Ghi chú cho ${item.name}`,
+      maxlength: "200",
+      disabled: true,
+    });
+
     const apply = (value) => {
       const next = Math.min(MAX_QUANTITY, Math.max(0, value));
       input.value = String(next);
       minus.disabled = next === 0 || this.locked;
+      note.disabled = next === 0 || this.locked;
+      if (next === 0) note.value = "";
       this.refreshTotals();
     };
 
     minus.addEventListener("click", () => apply((parseInt(input.value, 10) || 0) - 1));
     plus.addEventListener("click", () => apply((parseInt(input.value, 10) || 0) + 1));
     input.addEventListener("input", () => apply(parseInt(input.value, 10) || 0));
+    note.addEventListener("input", () => this.onChange(this.getSelection()));
 
-    if (this.locked) [minus, plus, input].forEach((el) => { el.disabled = true; });
+    if (this.locked) [minus, plus, input, note].forEach((el) => { el.disabled = true; });
 
     return Dom.el(
       "div",
-      { class: "qty" },
-      Dom.el("label", { for: `qty-${item.id}`, text: "Số lượng" }),
-      Dom.el("div", { class: "qty-control" }, minus, input, plus)
+      { class: "qty-block" },
+      Dom.el(
+        "div",
+        { class: "qty" },
+        Dom.el("label", { for: `qty-${item.id}`, text: "Số lượng" }),
+        Dom.el("div", { class: "qty-control" }, minus, input, plus)
+      ),
+      note
     );
   }
 
-  /** Các món đang được chọn, kèm giá để tính tổng. */
+  /** Các món đang được chọn, kèm giá và ghi chú để tính tổng / gửi lên server. */
   getSelection() {
     const selected = [];
     this.container.querySelectorAll(".quantity-input").forEach((input) => {
@@ -143,11 +163,13 @@ export class MenuGrid {
       if (quantity > 0) {
         const item = this.items.find((m) => m.id === parseInt(input.dataset.id, 10));
         if (item) {
+          const noteInput = this.container.querySelector(`[data-note-for="${item.id}"]`);
           selected.push({
             menu_item_id: item.id,
             name: item.name,
             price: item.price,
             quantity,
+            note: noteInput ? noteInput.value.trim() : "",
           });
         }
       }
