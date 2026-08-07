@@ -181,6 +181,43 @@ class Database:
             )
         """)
 
+        # Bình chọn quán ăn (Phase 4). Chỉ một câu hỏi + nhiều lựa chọn, không
+        # cần đa poll song song ở quy mô app này.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS polls (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                question TEXT NOT NULL,
+                poll_date TEXT NOT NULL,
+                created_by INTEGER NOT NULL,
+                closed INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (created_by) REFERENCES users (id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS poll_options (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                poll_id INTEGER NOT NULL,
+                label TEXT NOT NULL,
+                FOREIGN KEY (poll_id) REFERENCES polls (id)
+            )
+        """)
+
+        # Một người chỉ một phiếu mỗi poll; đổi ý thì ghi đè bằng UPDATE OR
+        # REPLACE, không cộng dồn phiếu.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS poll_votes (
+                poll_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                option_id INTEGER NOT NULL,
+                voted_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (poll_id, user_id),
+                FOREIGN KEY (poll_id) REFERENCES polls (id),
+                FOREIGN KEY (option_id) REFERENCES poll_options (id)
+            )
+        """)
+
     def _migrate_columns(self, cursor):
         for column, ddl in [
             ("phone", "TEXT"), ("qr_image_url", "TEXT"), ("google_sub", "TEXT"),
@@ -188,7 +225,11 @@ class Database:
         ]:
             self._add_column_if_missing(cursor, "users", column, ddl)
 
-        for column, ddl in [("restaurant_id", "INTEGER"), ("image_url", "TEXT")]:
+        for column, ddl in [
+            ("restaurant_id", "INTEGER"), ("image_url", "TEXT"),
+            # Thẻ phân loại/tìm kiếm món, cách nhau bằng dấu phẩy (mã tìm kiếm/tag Phase 4)
+            ("tags", "TEXT"),
+        ]:
             self._add_column_if_missing(cursor, "menu_items", column, ddl)
 
         for column, ddl in [
@@ -216,6 +257,10 @@ class Database:
         )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_fund_tx_created ON fund_transactions (created_at)"
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_polls_date ON polls (poll_date)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON poll_options (poll_id)"
         )
 
     def _seed_fund(self, cursor):

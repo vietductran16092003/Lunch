@@ -6,7 +6,7 @@ from .base import BaseRepository
 _SELECT_WITH_RESTAURANT = """
     SELECT menu_items.id, menu_items.name, menu_items.description,
            menu_items.price, menu_items.available_date, menu_items.image_url,
-           menu_items.restaurant_id,
+           menu_items.restaurant_id, menu_items.tags,
            restaurants.name AS restaurant_name,
            restaurants.rating AS restaurant_rating,
            restaurants.grab_url AS restaurant_grab_url
@@ -86,11 +86,11 @@ class MenuRepository(BaseRepository):
     def create(self, item: MenuItem) -> int:
         return self._insert(
             "INSERT INTO menu_items "
-            "(name, description, price, available_date, restaurant_id, image_url) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "(name, description, price, available_date, restaurant_id, image_url, tags) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 item.name, item.description, item.price,
-                item.available_date, item.restaurant_id, item.image_url,
+                item.available_date, item.restaurant_id, item.image_url, item.tags,
             ),
         )
 
@@ -98,11 +98,11 @@ class MenuRepository(BaseRepository):
         self._execute(
             """UPDATE menu_items
                SET name = ?, description = ?, price = ?, available_date = ?,
-                   restaurant_id = ?, image_url = ?
+                   restaurant_id = ?, image_url = ?, tags = ?
                WHERE id = ?""",
             (
                 item.name, item.description, item.price, item.available_date,
-                item.restaurant_id, item.image_url, item_id,
+                item.restaurant_id, item.image_url, item.tags, item_id,
             ),
         )
 

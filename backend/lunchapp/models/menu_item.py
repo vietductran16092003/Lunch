@@ -6,11 +6,11 @@ from .base import BaseModel
 class MenuItem(BaseModel):
     FIELDS = (
         "id", "name", "description", "price", "available_date",
-        "restaurant_id", "image_url",
+        "restaurant_id", "image_url", "tags",
     )
 
     def __init__(self, id=None, name=None, description=None, price=0, available_date=None,
-                 restaurant_id=None, image_url=None,
+                 restaurant_id=None, image_url=None, tags=None,
                  restaurant_name=None, restaurant_rating=None, restaurant_grab_url=None):
         self.id = id
         self.name = name
@@ -19,6 +19,8 @@ class MenuItem(BaseModel):
         self.available_date = available_date
         self.restaurant_id = restaurant_id
         self.image_url = image_url
+        # Thẻ tìm kiếm/phân loại, ví dụ "cơm, cay, chay" — chỉ để lọc, không bắt buộc
+        self.tags = tags
         # Các trường lấy kèm từ JOIN nhà hàng, chỉ để hiển thị
         self.restaurant_name = restaurant_name
         self.restaurant_rating = restaurant_rating
@@ -36,6 +38,7 @@ class MenuItem(BaseModel):
             available_date=cls.column(row, "available_date"),
             restaurant_id=cls.column(row, "restaurant_id"),
             image_url=cls.column(row, "image_url"),
+            tags=cls.column(row, "tags"),
             restaurant_name=cls.column(row, "restaurant_name"),
             restaurant_rating=cls.column(row, "restaurant_rating"),
             restaurant_grab_url=cls.column(row, "restaurant_grab_url"),

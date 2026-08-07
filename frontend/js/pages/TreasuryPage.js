@@ -31,6 +31,11 @@ export class TreasuryPage extends BasePage {
     }
 
     Dom.byId("fund-form").addEventListener("submit", (e) => this.submitTransaction(e));
+    Dom.byId("report-form").addEventListener("submit", (e) => this.loadReport(e));
+
+    const today = Formatter.todayIso();
+    Dom.byId("report-start").value = today;
+    Dom.byId("report-end").value = today;
 
     await Promise.all([this.loadBalance(), this.loadDebts(), this.loadLedger()]);
 
@@ -123,6 +128,54 @@ export class TreasuryPage extends BasePage {
       message.className = "message-error";
       message.textContent = err.message;
       toasts.error(`${type === "topup" ? "Nạp" : "Rút"} quỹ thất bại`, err.message);
+    } finally {
+      Dom.setBusy(button, false);
+    }
+  }
+
+  // ===== Báo cáo AI theo khoảng ngày (Phase 4) =====
+
+  async loadReport(event) {
+    event.preventDefault();
+    const start = Dom.byId("report-start").value;
+    const end = Dom.byId("report-end").value;
+    const box = Dom.byId("report-box");
+    const button = event.target.querySelector("button[type='submit']");
+
+    if (!start || !end) return;
+
+    Dom.setBusy(button, true, "Đang tính báo cáo");
+    try {
+      const data = await api.get(
+        `/ai/report?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+      );
+      Dom.clear(box);
+
+      const rows = data.daily_totals.map((d) =>
+        Dom.el(
+          "tr", {},
+          Dom.el("td", { text: d.date }),
+          Dom.el("td", { class: "num mono", text: Formatter.money(d.total) })
+        )
+      );
+      const table = rows.length
+        ? Dom.el(
+            "table",
+            { html: "<thead><tr><th scope='col'>Ngày</th><th scope='col' class='num'>Tổng chi</th></tr></thead>" },
+          )
+        : null;
+      if (table) {
+        const tbody = Dom.el("tbody");
+        rows.forEach((r) => tbody.appendChild(r));
+        table.appendChild(tbody);
+      }
+
+      box.append(
+        Dom.el("p", { style: "margin:0 0 12px;", text: data.report_text }),
+        table ? Dom.el("div", { class: "table-wrap" }, table) : null
+      );
+    } catch (err) {
+      Dom.clear(box).appendChild(Dom.emptyState("⚠️", err.message));
     } finally {
       Dom.setBusy(button, false);
     }

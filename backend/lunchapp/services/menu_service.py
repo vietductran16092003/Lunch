@@ -80,6 +80,7 @@ class MenuService:
             available_date=available_date,
             restaurant_id=restaurant_id,
             image_url=(data.get("image_url") or "").strip() or None,
+            tags=(data.get("tags") or "").strip() or None,
         )
         new_id = self.menu.create(item)
 
@@ -99,6 +100,7 @@ class MenuService:
             available_date=data.get("available_date"),
             restaurant_id=data.get("restaurant_id"),
             image_url=(data.get("image_url") or "").strip() or None,
+            tags=(data.get("tags") or "").strip() or None,
         )
         self.menu.update(item_id, item)
 

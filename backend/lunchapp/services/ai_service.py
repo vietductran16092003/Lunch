@@ -8,6 +8,7 @@ và route giữ nguyên.
 """
 
 import re
+from datetime import date
 
 from ..config import Config
 from ..core.dates import Clock
@@ -195,6 +196,72 @@ class AiService:
             "top_items": [{"name": n, "count": c} for n, c in top_items],
             "top_restaurants": [{"name": n, "total": v} for n, v in top_restaurants],
             "summary_text": " ".join(lines),
+        }
+
+    # ===== Báo cáo AI theo khoảng ngày (Phase 4) =====
+
+    def range_report(self, start_date, end_date=None) -> dict:
+        """Tổng hợp chi tiêu và thói quen đặt món trong một khoảng ngày.
+
+        Duyệt bằng list_for_date từng ngày thay vì viết SQL tổng hợp riêng, vì
+        quy mô app này (vài chục đơn/ngày) không cần tối ưu, và tái dùng được
+        logic đã có ở summarize_day cho từng ngày.
+        """
+        start_date = Clock.date_or_today(start_date)
+        end_date = Clock.date_or_today(end_date) if end_date else start_date
+        if end_date < start_date:
+            raise ValidationError("Ngày kết thúc phải sau ngày bắt đầu")
+        if (date.fromisoformat(end_date) - date.fromisoformat(start_date)).days > 60:
+            raise ValidationError("Khoảng ngày tối đa 60 ngày")
+
+        item_counts = {}
+        person_totals = {}
+        daily_totals = {}
+        grand_total = 0
+        total_orders = 0
+
+        current = start_date
+        while current <= end_date:
+            orders = self.orders.list_for_date(current)
+            day_total = 0
+            for order in orders:
+                total_orders += 1
+                name = self.users.find_by_id(order.user_id)
+                name = name.name if name else "Không rõ"
+                for item in order.items:
+                    item_counts[item.name] = item_counts.get(item.name, 0) + item.quantity
+                    person_totals[name] = person_totals.get(name, 0) + item.line_cost
+                    day_total += item.line_cost
+            if day_total:
+                daily_totals[current] = day_total
+            grand_total += day_total
+            current = Clock.add_days(current, 1)
+
+        top_items = sorted(item_counts.items(), key=lambda kv: -kv[1])[:5]
+        top_spenders = sorted(person_totals.items(), key=lambda kv: -kv[1])[:5]
+        avg_per_day = grand_total / max(len(daily_totals), 1)
+
+        lines = [
+            f"Từ {start_date} đến {end_date}: {total_orders} đơn, tổng chi {int(grand_total):,}đ, "
+            f"trung bình {int(avg_per_day):,}đ/ngày có phát sinh đơn."
+        ]
+        if top_items:
+            lines.append("Món phổ biến nhất: " + ", ".join(f"{n} ({c})" for n, c in top_items) + ".")
+        if top_spenders:
+            lines.append(
+                "Chi nhiều nhất: "
+                + ", ".join(f"{n} ({int(v):,}đ)" for n, v in top_spenders) + "."
+            )
+
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "total_orders": total_orders,
+            "grand_total": grand_total,
+            "top_items": [{"name": n, "count": c} for n, c in top_items],
+            "top_spenders": [{"name": n, "total": v} for n, v in top_spenders],
+            "daily_totals": [{"date": d, "total": v} for d, v in sorted(daily_totals.items())],
+            "report_text": " ".join(lines),
         }
 
     # ===== Nhắc tự động: ai chưa đặt trước giờ chốt (mã 3.5x) =====

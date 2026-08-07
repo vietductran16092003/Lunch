@@ -14,7 +14,7 @@ export class MenuForm {
     this.select = Dom.byId("item-restaurant");
     this.submitBtn = Dom.byId("menu-submit-btn");
     this.dependentIds = [
-      "item-name", "item-price", "item-date", "item-description", "item-image",
+      "item-name", "item-price", "item-date", "item-description", "item-tags", "item-image",
     ];
 
     this.image = new ImageUploadField({
@@ -89,6 +89,7 @@ export class MenuForm {
         available_date: Dom.byId("item-date").value,
         restaurant_id: parseInt(this.select.value, 10),
         image_url: this.image.url,
+        tags: Dom.byId("item-tags").value.trim(),
       });
 
       message.className = "message-success";
@@ -99,6 +100,7 @@ export class MenuForm {
       name.value = "";
       Dom.byId("item-price").value = "";
       Dom.byId("item-description").value = "";
+      Dom.byId("item-tags").value = "";
       this.image.reset();
       name.focus();
 

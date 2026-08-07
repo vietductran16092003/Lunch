@@ -12,6 +12,7 @@ from .repositories import (
     FundRepository,
     MenuRepository,
     OrderRepository,
+    PollRepository,
     RestaurantRepository,
     ScheduleRepository,
     UserRepository,
@@ -25,6 +26,7 @@ from .services import (
     GrabService,
     MenuService,
     OrderService,
+    PollService,
     ReportService,
     RestaurantService,
     ScheduleService,
@@ -48,6 +50,7 @@ class ServiceContainer:
         self.schedule_repo = ScheduleRepository(database)
         self.deadline_repo = DeadlineRepository(database)
         self.fund_repo = FundRepository(database)
+        self.poll_repo = PollRepository(database)
 
         # Tầng nghiệp vụ
         self.grab = GrabService(config)
@@ -69,6 +72,7 @@ class ServiceContainer:
         self.fund = FundService(
             self.fund_repo, self.order_repo, self.users, events, config
         )
+        self.polls = PollService(self.poll_repo, events)
         self.ai = AiService(
             self.order_repo, self.menu_items, self.users, self.restaurant_repo,
             events, deadline_service=self.deadlines, config=config,

@@ -1,6 +1,7 @@
 import { Chatbot } from "../components/Chatbot.js";
 import { Navbar } from "../components/Navbar.js";
 import { realtime } from "../core/RealtimeClient.js";
+import { toasts } from "../core/ToastManager.js";
 
 /** Khung chung cho mọi trang có thanh điều hướng. */
 export class BasePage {
@@ -19,6 +20,9 @@ export class BasePage {
       // render() chuyển hướng sang login khi chưa đăng nhập
       if (!this.user) return;
       new Chatbot().mount();
+      // Thông báo chung (Phase 4) — luôn lắng nghe bất kể trang có gọi listen() hay không
+      realtime.on("announcement", (data) => toasts.info("Thông báo", data.message));
+      realtime.connect();
     }
     await this.init();
   }

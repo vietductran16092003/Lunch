@@ -6,6 +6,7 @@ from .fund_service import FundService
 from .grab_service import GrabService
 from .menu_service import MenuService
 from .order_service import OrderService
+from .poll_service import PollService
 from .report_service import ReportService
 from .restaurant_service import RestaurantService
 from .schedule_service import ScheduleService
@@ -22,6 +23,7 @@ __all__ = [
     "GrabService",
     "MenuService",
     "OrderService",
+    "PollService",
     "ReportService",
     "RestaurantService",
     "ScheduleService",

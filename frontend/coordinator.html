@@ -57,6 +57,70 @@
     </form>
 
     <div id="shipping-result"></div>
+
+    <!-- Bình chọn quán ăn (Phase 4) -->
+    <div class="section-head">
+      <h2>Bình chọn quán ăn</h2>
+      <p>Mở bình chọn cho ngày đang xem, nhân viên vào trang thực đơn để chọn.</p>
+    </div>
+
+    <div id="poll-box" class="card"></div>
+
+    <form id="poll-create-form" novalidate>
+      <div class="field field-lg">
+        <label for="poll-question">Câu hỏi</label>
+        <input type="text" id="poll-question" name="poll-question" placeholder="Hôm nay ăn quán nào?">
+      </div>
+      <div class="field field-lg">
+        <label for="poll-options">Lựa chọn (mỗi dòng một quán)</label>
+        <textarea id="poll-options" name="poll-options" rows="4"
+                  placeholder="Quán cơm ABC&#10;Bún bò Huế&#10;Cơm gà xối mỡ"></textarea>
+      </div>
+      <button type="submit">Mở bình chọn</button>
+      <p id="poll-create-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+
+    <!-- Đặt hộ nhân viên (Phase 4) -->
+    <div class="section-head">
+      <h2>Đặt hộ nhân viên</h2>
+      <p>Dùng khi ai đó không tự đặt được, ví dụ đang họp hoặc đi công tác.</p>
+    </div>
+
+    <div class="field">
+      <label for="assist-employee">Nhân viên</label>
+      <select id="assist-employee" name="assist-employee">
+        <option value="">— Chọn nhân viên —</option>
+      </select>
+    </div>
+
+    <div id="assist-menu-grid" class="menu-grid"></div>
+
+    <div class="summary-bar">
+      <div class="totals">
+        <span class="stat-value" id="assist-total">0 đ</span>
+        <span class="stat-label" id="assist-count">Chưa chọn món nào</span>
+      </div>
+      <div class="actions">
+        <button type="button" id="assist-order-btn">Đặt hộ</button>
+      </div>
+    </div>
+    <p id="assist-order-message" role="status" aria-live="polite"></p>
+
+    <!-- Gửi thông báo chung (Phase 4) -->
+    <div class="section-head">
+      <h2>Gửi thông báo</h2>
+      <p>Hiện ngay dưới dạng thông báo nổi cho mọi người đang mở app.</p>
+    </div>
+
+    <form id="broadcast-form" novalidate>
+      <div class="field field-lg">
+        <label for="broadcast-message">Nội dung</label>
+        <input type="text" id="broadcast-message" name="broadcast-message"
+               placeholder="Ví dụ: Quán hôm nay giao trễ 15 phút" maxlength="300">
+      </div>
+      <button type="submit">Gửi thông báo</button>
+      <p id="broadcast-message-status" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
   </main>
 
   <script type="module" src="js/main.js?v=20"></script>

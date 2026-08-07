@@ -63,6 +63,26 @@
     <div id="ledger-box" aria-busy="true">
       <div class="skeleton" style="min-height:160px;"></div>
     </div>
+
+    <!-- Báo cáo AI theo khoảng ngày (Phase 4) -->
+    <div class="section-head">
+      <h2>Báo cáo chi tiêu</h2>
+      <p>Tổng hợp theo khoảng ngày: món phổ biến, người chi nhiều nhất.</p>
+    </div>
+
+    <form id="report-form" novalidate>
+      <div class="field field-sm">
+        <label for="report-start">Từ ngày</label>
+        <input type="date" id="report-start" name="report-start" required>
+      </div>
+      <div class="field field-sm">
+        <label for="report-end">Đến ngày</label>
+        <input type="date" id="report-end" name="report-end" required>
+      </div>
+      <button type="submit">Xem báo cáo</button>
+    </form>
+
+    <div id="report-box" class="card"></div>
   </main>
 
   <script type="module" src="js/main.js?v=20"></script>

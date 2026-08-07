@@ -34,4 +34,37 @@ def build_coordinator_blueprint(services) -> Blueprint:
             )
         )
 
+    # ===== Đặt hộ nhân viên (Phase 4) =====
+
+    @bp.get("/employees")
+    @require_role(Role.COORDINATOR, Role.ADMIN)
+    def employees():
+        """Danh bạ rút gọn để chọn người đặt hộ."""
+        return jsonify({"users": services.auth.list_users()})
+
+    @bp.post("/orders-for/<int:user_id>")
+    @require_role(Role.COORDINATOR, Role.ADMIN)
+    def place_order_for(user_id):
+        data = request.get_json(silent=True) or {}
+        result = services.orders.place_order(
+            user_id, data.get("items", []), data.get("order_date")
+        )
+        return jsonify(result), 201
+
+    # ===== Thông báo chung (Phase 4) =====
+
+    @bp.post("/broadcast")
+    @require_role(Role.COORDINATOR, Role.ADMIN)
+    def broadcast():
+        data = request.get_json(silent=True) or {}
+        message = (data.get("message") or "").strip()
+        if not message:
+            return jsonify({"error": "Vui lòng nhập nội dung thông báo"}), 400
+
+        sender = services.users.find_by_id(SessionUser.id())
+        services.events.publish("announcement", {
+            "message": message, "from": sender.name if sender else "Quản trị",
+        })
+        return jsonify({"status": "sent"})
+
     return bp

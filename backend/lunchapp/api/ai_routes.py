@@ -36,6 +36,13 @@ def build_ai_blueprint(services) -> Blueprint:
     def summary():
         return jsonify(ai.summarize_day(request.args.get("date")))
 
+    @bp.get("/report")
+    @require_role(Role.COORDINATOR, Role.TREASURER, Role.ADMIN)
+    def report():
+        return jsonify(ai.range_report(
+            request.args.get("start"), request.args.get("end")
+        ))
+
     @bp.get("/reminders")
     @require_role(Role.COORDINATOR, Role.ADMIN)
     def reminders():
