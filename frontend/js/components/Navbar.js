@@ -15,18 +15,20 @@ export class Navbar {
     this.placeholder.innerHTML = `
       <header class="navbar">
         <div class="brand"><span class="dot" aria-hidden="true"></span> Lunch App</div>
-        <nav aria-label="Điều hướng chính">
-          <a href="index.html">Thực đơn</a>
-          <a href="history.html">Lịch sử</a>
-        </nav>
-        <div id="user-info">
-          <span class="user-avatar" id="user-avatar" aria-hidden="true"></span>
-          <span id="user-name"></span>
-          <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
-          <a href="coordinator.html" id="coordinator-link" hidden>Gom đơn</a>
-          <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
-          <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
-          <a href="#" id="logout-link">Đăng xuất</a>
+        <div class="navbar-right">
+          <nav aria-label="Điều hướng chính">
+            <a href="index.html">Thực đơn</a>
+            <a href="history.html">Lịch sử</a>
+          </nav>
+          <div id="user-info">
+            <span class="user-avatar" id="user-avatar" aria-hidden="true"></span>
+            <span id="user-name"></span>
+            <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
+            <a href="coordinator.html" id="coordinator-link" hidden>Gom đơn</a>
+            <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
+            <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
+            <a href="#" id="logout-link">Đăng xuất</a>
+          </div>
         </div>
       </header>
     `;

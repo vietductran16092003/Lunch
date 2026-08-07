@@ -113,6 +113,15 @@ body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Menu điều hướng và thông tin người dùng gộp chung một khối bên phải,
+   thay vì bị justify-content:space-between kéo dạt ra giữa thanh navbar. */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
 .navbar nav { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 
 .navbar nav a {
