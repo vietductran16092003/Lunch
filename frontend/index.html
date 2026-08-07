@@ -21,6 +21,7 @@
     <div class="date-picker" id="date-picker" role="group" aria-label="Chọn ngày đặt món" hidden></div>
 
     <!-- Tiến trình đơn hàng, cập nhật theo trạng thái đơn của chính người đang xem -->
+    <h2 class="stepper-title">Tiến trình đơn hàng</h2>
     <ol class="stepper" id="order-stepper" aria-label="Tiến trình đơn hàng hôm nay"></ol>
 
     <div id="cutoff-notice"></div>
@@ -31,9 +32,10 @@
 
     <section aria-labelledby="menu-heading">
       <h2 id="menu-heading" class="sr-only">Danh sách món ăn</h2>
-      <div class="field field-lg" style="margin-bottom:12px;">
+      <div class="search-row">
         <label for="menu-search" class="sr-only">Tìm món</label>
         <input type="search" id="menu-search" placeholder="Tìm món theo tên hoặc thẻ…">
+        <button type="button" id="menu-search-btn" aria-label="Tìm món">🔍</button>
       </div>
       <div id="menu-list" class="menu-grid" aria-busy="true">
         <div class="skeleton"></div>
@@ -49,7 +51,7 @@
       </div>
       <p id="order-message" role="status" aria-live="polite" style="margin:0;"></p>
       <div class="actions">
-        <button type="button" class="ghost" id="payment-method-btn">Thanh toán</button>
+        <button type="button" class="ghost" id="payment-method-btn" disabled>Thanh toán</button>
         <button type="button" id="place-order-btn">Đặt món</button>
       </div>
     </div>

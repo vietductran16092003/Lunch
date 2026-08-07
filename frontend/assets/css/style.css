@@ -153,6 +153,18 @@ body {
 .navbar #user-info a { color: var(--accent-strong); text-decoration: none; font-weight: 500; }
 .navbar #user-info a:hover { text-decoration: underline; }
 
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
 /* ===== Bố cục trang ===== */
 .container {
   max-width: 1180px;
@@ -230,6 +242,12 @@ h3 { font-size: 15px; margin: 0 0 var(--space-2); font-weight: 600; }
 }
 
 /* ===== Thanh tiến trình đơn hàng (stepper) ===== */
+.stepper-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
 .stepper {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1490,6 +1508,49 @@ tr.is-dirty td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
 #ledger-box .table-wrap {
   margin-bottom: var(--space-4);
 }
+
+/* ===== Ô tìm kiếm thực đơn ===== */
+.search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.search-row input[type="search"] { flex: 1; }
+
+.search-row button {
+  flex: 0 0 auto;
+  width: 40px;
+  padding: 0;
+  font-size: 16px;
+}
+
+/* ===== Bình chọn quán ăn: nút tròn nhỏ bên trái, nội dung kéo dài bên phải ===== */
+.poll-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.poll-option-radio {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+.poll-option-body {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.poll-option-name { font-size: 14px; }
+.poll-option-votes { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
 
 /* ===== Cảnh báo dinh dưỡng (Phase 5) ===== */
 .nutrition-badges {

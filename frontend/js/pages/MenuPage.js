@@ -32,6 +32,12 @@ export class MenuPage extends BasePage {
     Dom.byId("place-order-btn").addEventListener("click", () => this.placeOrder());
     Dom.byId("payment-method-btn").addEventListener("click", () => this.modal.open(this.order));
     Dom.byId("menu-search").addEventListener("input", (e) => this.grid.filter(e.target.value));
+    Dom.byId("menu-search").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.grid.filter(e.target.value);
+    });
+    Dom.byId("menu-search-btn").addEventListener("click", () => {
+      this.grid.filter(Dom.byId("menu-search").value);
+    });
 
     await this.loadDates();
     await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions(), this.loadPoll()]);
@@ -213,13 +219,21 @@ export class MenuPage extends BasePage {
     if (!poll) return;
 
     const options = poll.options.map((opt) => {
-      const label = Dom.el("label", { style: "display:flex; align-items:center; gap:8px; margin-bottom:6px;" });
+      const label = Dom.el("label", { class: "poll-option" });
       const radio = Dom.el("input", {
-        type: "radio", name: "poll-vote", value: opt.id,
+        type: "radio", name: "poll-vote", value: opt.id, class: "poll-option-radio",
         disabled: poll.closed,
       });
       radio.checked = poll.voted_option_id === opt.id;
-      label.append(radio, `${opt.label} (${opt.votes} phiếu)`);
+      label.append(
+        radio,
+        Dom.el(
+          "span",
+          { class: "poll-option-body" },
+          Dom.el("span", { class: "poll-option-name", text: opt.label }),
+          Dom.el("span", { class: "poll-option-votes", text: `${opt.votes} phiếu` })
+        )
+      );
 
       radio.addEventListener("change", async () => {
         try {
@@ -418,6 +432,9 @@ export class MenuPage extends BasePage {
     const paidByFund = this.order && this.order.payment_method === "fund";
     button.hidden = Boolean(paidByFund);
     if (paidByFund) return;
+
+    // Chưa có đơn nào thì chưa có gì để thanh toán — khoá nút lại
+    button.disabled = !this.order;
 
     const needsPayment =
       this.order && this.order.status === "ordered" && !this.order.paid_at;

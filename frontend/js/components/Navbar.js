@@ -20,6 +20,7 @@ export class Navbar {
           <a href="history.html">Lịch sử</a>
         </nav>
         <div id="user-info">
+          <span class="user-avatar" id="user-avatar" aria-hidden="true"></span>
           <span id="user-name"></span>
           <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
           <a href="coordinator.html" id="coordinator-link" hidden>Gom đơn</a>
@@ -51,6 +52,7 @@ export class Navbar {
     try {
       this.user = await api.get("/me");
       Dom.setText("user-name", this.user.name);
+      this.renderAvatar(this.user);
 
       if (this.user.is_admin) Dom.byId("admin-link").hidden = false;
       // Admin thấy hết mọi link — vừa để tiện thao tác, vừa vì admin có đủ quyền
@@ -67,6 +69,21 @@ export class Navbar {
       window.location.href = "login.html";
       return null;
     }
+  }
+
+  /** Chưa có ảnh thật của nhân viên, nên hiện chữ cái đầu tên trên nền màu ổn
+   * định theo tên — mỗi người luôn ra cùng một màu giữa các lần tải trang. */
+  renderAvatar(user) {
+    const avatar = Dom.byId("user-avatar");
+    if (!avatar || !user) return;
+
+    const initial = (user.name || "?").trim().charAt(0).toUpperCase();
+    let hash = 0;
+    for (const ch of user.email || user.name || "") hash = (hash * 31 + ch.charCodeAt(0)) % 360;
+
+    avatar.textContent = initial;
+    avatar.style.background = `hsl(${hash}, 55%, 88%)`;
+    avatar.style.color = `hsl(${hash}, 55%, 30%)`;
   }
 
   async logout(event) {

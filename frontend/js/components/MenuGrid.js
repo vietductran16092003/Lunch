@@ -102,18 +102,26 @@ export class MenuGrid {
     return card;
   }
 
+  /** Bỏ dấu tiếng Việt để tìm không cần gõ đúng dấu, ví dụ "com" khớp "cơm". */
+  static normalize(text) {
+    return (text || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/đ/gi, "d")
+      .toLowerCase();
+  }
+
   /** Ẩn/hiện món theo từ khoá tên/mô tả/thẻ — không mất số lượng đã chọn (Phase 4). */
   filter(query) {
     if (!this.container) return;
-    const needle = (query || "").trim().toLowerCase();
+    const needle = MenuGrid.normalize(query.trim());
 
     this.container.querySelectorAll(".menu-item").forEach((card) => {
       const item = this.items.find((m) => m.id === parseInt(card.dataset.id, 10));
       if (!item) return;
-      const haystack = [item.name, item.description, item.tags]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      const haystack = MenuGrid.normalize(
+        [item.name, item.description, item.tags].filter(Boolean).join(" ")
+      );
       card.hidden = Boolean(needle) && !haystack.includes(needle);
     });
   }
