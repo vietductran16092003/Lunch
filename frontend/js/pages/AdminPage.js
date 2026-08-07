@@ -1,5 +1,6 @@
 import { DashboardView } from "../components/DashboardView.js";
 import { DatePicker } from "../components/DatePicker.js";
+import { MenuExtractForm } from "../components/MenuExtractForm.js";
 import { MenuForm } from "../components/MenuForm.js";
 import { PaymentInfoForm } from "../components/PaymentInfoForm.js";
 import { RestaurantManager } from "../components/RestaurantManager.js";
@@ -18,8 +19,12 @@ export class AdminPage extends BasePage {
 
     this.dashboard = new DashboardView({ onConfirmPayment: () => this.loadDashboard() });
     this.menuForm = new MenuForm({ onCreated: () => this.loadDashboard() });
+    this.extractForm = new MenuExtractForm({ onSaved: () => this.loadDashboard() });
     this.restaurants = new RestaurantManager({
-      onChange: (list) => this.menuForm.updateAvailability(list.length > 0),
+      onChange: (list) => {
+        this.menuForm.updateAvailability(list.length > 0);
+        this.extractForm.updateRestaurants(list);
+      },
     });
     this.datePicker = new DatePicker("admin-date-picker", (date) => this.switchDate(date));
     this.paymentInfo = new PaymentInfoForm();

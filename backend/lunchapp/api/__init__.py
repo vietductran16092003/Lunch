@@ -1,4 +1,5 @@
 from .admin_routes import build_admin_blueprint
+from .ai_routes import build_ai_blueprint
 from .auth_routes import build_auth_blueprint
 from .coordinator_routes import build_coordinator_blueprint
 from .fund_routes import build_fund_blueprint
@@ -9,6 +10,7 @@ from .system_routes import build_system_blueprint
 
 __all__ = [
     "build_admin_blueprint",
+    "build_ai_blueprint",
     "build_auth_blueprint",
     "build_coordinator_blueprint",
     "build_fund_blueprint",

@@ -1491,6 +1491,103 @@ tr.is-dirty td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
   margin-bottom: var(--space-4);
 }
 
+/* ===== Gợi ý món (Phase 3) ===== */
+.suggestions-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.suggestions-row .chip {
+  border: 1px solid var(--accent-soft);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.suggestions-row .chip:hover { background: var(--accent-soft); }
+
+/* ===== Trợ lý chat (Phase 3) ===== */
+.chatbot-toggle {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  font-size: 22px;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  z-index: var(--z-toast);
+}
+
+.chatbot-toggle:hover { background: var(--accent-strong); color: #fff; }
+
+.chatbot-panel {
+  position: fixed;
+  right: var(--space-5);
+  bottom: calc(var(--space-5) + 64px);
+  width: min(320px, calc(100vw - 2 * var(--space-5)));
+  height: 420px;
+  max-height: calc(100vh - 140px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: var(--z-toast);
+}
+
+.chatbot-panel.is-hidden { display: none; }
+
+.chatbot-head {
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.chatbot-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chatbot-msg {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  max-width: 85%;
+  line-height: 1.4;
+}
+
+.chatbot-msg.is-bot { background: var(--bg-surface-raised); align-self: flex-start; }
+.chatbot-msg.is-user { background: var(--accent-soft); color: var(--accent-ink); align-self: flex-end; }
+
+.chatbot-input-row {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.chatbot-input-row input { flex: 1; }
+
 /* ===== Thanh cuộn ===== */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-sunken); }

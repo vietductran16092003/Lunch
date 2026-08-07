@@ -17,6 +17,7 @@ from .repositories import (
     UserRepository,
 )
 from .services import (
+    AiService,
     AuthService,
     DashboardService,
     DeadlineService,
@@ -67,6 +68,10 @@ class ServiceContainer:
         self.reports = ReportService(self.order_repo)
         self.fund = FundService(
             self.fund_repo, self.order_repo, self.users, events, config
+        )
+        self.ai = AiService(
+            self.order_repo, self.menu_items, self.users, self.restaurant_repo,
+            events, deadline_service=self.deadlines, config=config,
         )
 
     @classmethod

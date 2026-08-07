@@ -36,13 +36,13 @@ export class CoordinatorPage extends BasePage {
     Dom.byId("shipping-split-form").addEventListener("submit", (e) => this.splitShipping(e));
 
     await this.loadDates();
-    await this.loadGrouped();
+    await Promise.all([this.loadGrouped(), this.loadSummary(), this.loadReminders()]);
 
     this.listen({
-      order_placed: () => this.loadGrouped(),
-      order_updated: () => this.loadGrouped(),
-      order_cancelled: () => this.loadGrouped(),
-      orders_locked: () => this.loadGrouped(),
+      order_placed: () => { this.loadGrouped(); this.loadSummary(); this.loadReminders(); },
+      order_updated: () => { this.loadGrouped(); this.loadSummary(); },
+      order_cancelled: () => { this.loadGrouped(); this.loadSummary(); this.loadReminders(); },
+      orders_locked: () => { this.loadGrouped(); this.loadReminders(); },
       shipping_split: (data) => {
         if (data.date === this.date) this.loadGrouped();
       },
@@ -64,7 +64,55 @@ export class CoordinatorPage extends BasePage {
     if (!date || date === this.date) return;
     this.date = date;
     this.datePicker.render(this.availableDates, this.date, this.today);
-    await this.loadGrouped();
+    await Promise.all([this.loadGrouped(), this.loadSummary(), this.loadReminders()]);
+  }
+
+  async loadSummary() {
+    const box = Dom.byId("ai-summary-box");
+    if (!box) return;
+    try {
+      const data = await api.get(`/ai/summary?date=${encodeURIComponent(this.date)}`);
+      Dom.clear(box);
+      box.appendChild(Dom.el("p", { style: "margin:0;", text: data.summary_text }));
+    } catch (err) {
+      Dom.clear(box).appendChild(Dom.emptyState("⚠️", "Không tải được tóm tắt."));
+    }
+  }
+
+  async loadReminders() {
+    const box = Dom.byId("ai-reminders-box");
+    if (!box) return;
+    try {
+      const data = await api.get(`/ai/reminders?date=${encodeURIComponent(this.date)}`);
+      Dom.clear(box);
+
+      if (data.closed) {
+        box.appendChild(Dom.el("p", { style: "margin:0;", text: "Đã quá giờ chốt đơn." }));
+        return;
+      }
+      if (data.note) {
+        box.appendChild(Dom.el("p", { style: "margin:0;", text: data.note }));
+        return;
+      }
+      if (!data.pending_users.length) {
+        box.appendChild(Dom.el("p", { style: "margin:0;", text: "Mọi người đã đặt món." }));
+        return;
+      }
+
+      box.append(
+        Dom.el("p", {
+          style: "margin:0 0 8px;",
+          text: `${data.pending_count} người chưa đặt (giờ chốt ${data.cutoff}):`,
+        }),
+        Dom.el(
+          "ul",
+          { style: "margin:0; padding-left:18px;" },
+          ...data.pending_users.map((u) => Dom.el("li", { text: `${u.name} (${u.email})` }))
+        )
+      );
+    } catch (err) {
+      Dom.clear(box).appendChild(Dom.emptyState("⚠️", "Không tải được danh sách nhắc."));
+    }
   }
 
   async loadGrouped() {

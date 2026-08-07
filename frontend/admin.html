@@ -43,6 +43,34 @@
 
     <div id="restaurant-list" style="margin-top:16px;"></div>
 
+    <!-- Trích xuất menu từ văn bản dán tay (Phase 3, mã 7.7) -->
+    <div class="section-head">
+      <h2>Trích xuất menu từ văn bản</h2>
+      <p>Dán danh sách "Tên món - Giá" (mỗi dòng một món), xem trước rồi lưu hàng loạt.</p>
+    </div>
+
+    <form id="extract-menu-form" novalidate>
+      <div class="field">
+        <label for="extract-restaurant">Nhà hàng<span class="required-mark" aria-hidden="true">*</span></label>
+        <select id="extract-restaurant" name="extract-restaurant" required>
+          <option value="">— Chọn nhà hàng —</option>
+        </select>
+      </div>
+      <div class="field field-sm">
+        <label for="extract-date">Ngày áp dụng<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="date" id="extract-date" name="extract-date" required>
+      </div>
+      <div class="field field-lg">
+        <label for="extract-text">Văn bản menu</label>
+        <textarea id="extract-text" name="extract-text" rows="6"
+                  placeholder="Cơm gà xối mỡ - 35000&#10;Bún bò Huế - 30k&#10;Trà đá - 5.000đ"></textarea>
+      </div>
+      <button type="button" id="extract-preview-btn">Xem trước</button>
+      <p id="extract-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+
+    <div id="extract-preview-box"></div>
+
     <!-- Bước 2 — Thực đơn, khóa cho đến khi chọn được nhà hàng -->
     <div class="section-head">
       <h2>2. Thực đơn hôm nay</h2>

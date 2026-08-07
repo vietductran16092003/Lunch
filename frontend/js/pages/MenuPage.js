@@ -33,7 +33,7 @@ export class MenuPage extends BasePage {
     Dom.byId("payment-method-btn").addEventListener("click", () => this.modal.open(this.order));
 
     await this.loadDates();
-    await Promise.all([this.loadMenu(), this.loadOrder()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
 
     this.listen({
       orders_locked: (data) => {
@@ -61,7 +61,45 @@ export class MenuPage extends BasePage {
 
   async refreshAll() {
     await this.loadDates();
-    await Promise.all([this.loadMenu(), this.loadOrder()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
+  }
+
+  /** Gợi ý món dựa trên lịch sử đặt của chính người dùng (Phase 3). */
+  async loadSuggestions() {
+    const box = Dom.byId("suggestions-box");
+    if (!box) return;
+    try {
+      const query = this.selectedDate ? `?date=${encodeURIComponent(this.selectedDate)}` : "";
+      const data = await api.get(`/ai/suggestions${query}`);
+      Dom.clear(box);
+      if (!data.suggestions || !data.suggestions.length) return;
+
+      const chips = data.suggestions.map((item) => {
+        const chip = Dom.el(
+          "button",
+          { type: "button", class: "chip", text: `+ ${item.name}` }
+        );
+        chip.addEventListener("click", () => {
+          const input = Dom.byId(`qty-${item.menu_item_id}`);
+          if (!input) return;
+          input.value = String((parseInt(input.value, 10) || 0) + 1);
+          input.dispatchEvent(new Event("input"));
+          input.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        return chip;
+      });
+
+      box.appendChild(
+        Dom.el(
+          "div",
+          { class: "suggestions-row" },
+          Dom.el("span", { class: "subtitle", text: "Gợi ý cho bạn:" }),
+          ...chips
+        )
+      );
+    } catch (err) {
+      Dom.clear(box);
+    }
   }
 
   // ===== Tải dữ liệu =====
@@ -135,7 +173,7 @@ export class MenuPage extends BasePage {
     if (!date || date === this.selectedDate) return;
     this.selectedDate = date;
     this.datePicker.render(this.availableDates, this.selectedDate, this.today);
-    await Promise.all([this.loadMenu(), this.loadOrder()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
   }
 
   // ===== Hiển thị =====

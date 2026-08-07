@@ -1,3 +1,4 @@
+from .ai_service import AiService
 from .auth_service import AuthService, GoogleTokenVerifier
 from .dashboard_service import DashboardService, EmployeeOrderSummary
 from .deadline_service import DeadlineService
@@ -11,6 +12,7 @@ from .schedule_service import ScheduleService
 from .upload_service import UploadService
 
 __all__ = [
+    "AiService",
     "AuthService",
     "GoogleTokenVerifier",
     "DashboardService",

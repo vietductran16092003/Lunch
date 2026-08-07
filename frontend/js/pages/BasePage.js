@@ -1,3 +1,4 @@
+import { Chatbot } from "../components/Chatbot.js";
 import { Navbar } from "../components/Navbar.js";
 import { realtime } from "../core/RealtimeClient.js";
 
@@ -17,6 +18,7 @@ export class BasePage {
       this.user = await this.navbar.render();
       // render() chuyển hướng sang login khi chưa đăng nhập
       if (!this.user) return;
+      new Chatbot().mount();
     }
     await this.init();
   }
