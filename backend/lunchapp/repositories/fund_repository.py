@@ -6,8 +6,11 @@ from .base import BaseRepository
 _TX_COLUMNS = (
     "fund_transactions.id, fund_transactions.type, fund_transactions.amount, "
     "fund_transactions.user_id, users.name AS user_name, fund_transactions.note, "
-    "fund_transactions.created_at"
+    "fund_transactions.created_at, fund_transactions.month"
 )
+
+# Các loại giao dịch làm TĂNG số dư; mọi loại khác đều làm GIẢM
+_CREDIT_TYPES = ("topup", "dues")
 
 
 class FundRepository(BaseRepository):
@@ -31,17 +34,30 @@ class FundRepository(BaseRepository):
         )
         return FundTransaction.from_rows(rows)
 
+    def dues_for_month(self, month: str) -> list:
+        rows = self._fetch_all(
+            f"""
+            SELECT {_TX_COLUMNS}
+            FROM fund_transactions
+            LEFT JOIN users ON fund_transactions.user_id = users.id
+            WHERE fund_transactions.type = 'dues' AND fund_transactions.month = ?
+            ORDER BY fund_transactions.id
+            """,
+            (month,),
+        )
+        return FundTransaction.from_rows(rows)
+
     # ===== Ghi =====
 
     def record_transaction(self, type: str, amount: int, user_id, note: str,
-                            created_at: str) -> int:
+                            created_at: str, month: str | None = None) -> int:
         """Cập nhật số dư và ghi sổ trong CÙNG một giao dịch.
 
         Không bao giờ được để lộ khoảnh khắc balance đã đổi mà dòng sổ sách
         chưa kịp ghi (hoặc ngược lại) — hai thao tác này phải cùng thành công
         hoặc cùng thất bại.
         """
-        delta = amount if type == "topup" else -amount
+        delta = amount if type in _CREDIT_TYPES else -amount
         with self.db.session(commit=True) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -49,8 +65,8 @@ class FundRepository(BaseRepository):
                 (delta, created_at),
             )
             cursor.execute(
-                "INSERT INTO fund_transactions (type, amount, user_id, note, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (type, amount, user_id, note, created_at),
+                "INSERT INTO fund_transactions (type, amount, user_id, note, created_at, month) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (type, amount, user_id, note, created_at, month),
             )
             return cursor.lastrowid

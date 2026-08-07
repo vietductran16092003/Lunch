@@ -41,4 +41,29 @@ def build_fund_blueprint(services) -> Blueprint:
     def debts():
         return jsonify(services.fund.debts(request.args.get("since")))
 
+    # ===== Thanh toán đơn bằng quỹ (luồng 2) =====
+
+    @bp.post("/pay-from-fund")
+    @require_role(Role.TREASURER, Role.ADMIN)
+    def pay_from_fund():
+        data = request.get_json(silent=True) or {}
+        return jsonify(
+            services.fund.pay_orders_from_fund(data.get("date"), actor_id=SessionUser.id())
+        )
+
+    # ===== Góp quỹ hàng tháng (luồng 2) =====
+
+    @bp.post("/dues")
+    @require_role(Role.TREASURER, Role.ADMIN)
+    def contribute_dues():
+        data = request.get_json(silent=True) or {}
+        return jsonify(services.fund.contribute_dues(
+            data.get("user_id"), data.get("amount"), data.get("month"), data.get("note"),
+        )), 201
+
+    @bp.get("/dues")
+    @require_role(Role.TREASURER, Role.ADMIN)
+    def dues_overview():
+        return jsonify(services.fund.dues_overview(request.args.get("month")))
+
     return bp

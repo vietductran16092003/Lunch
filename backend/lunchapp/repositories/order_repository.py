@@ -180,6 +180,19 @@ class OrderRepository(BaseRepository):
             (OrderStatus.CLOSED, locked_at, target_date, OrderStatus.PENDING),
         )
 
+    def pay_from_fund(self, order_ids: list, paid_at: str):
+        """Đánh dấu các đơn đã được thủ quỹ trả bằng quỹ chung — coi như hoàn tất
+        luôn, không cần nhân viên tự chuyển khoản (luồng 2, khác với mã 4.x)."""
+        if not order_ids:
+            return
+        with self.db.session(commit=True) as conn:
+            cursor = conn.cursor()
+            cursor.executemany(
+                "UPDATE orders SET payment_method = 'fund', status = ?, "
+                "paid_at = ?, payment_confirmed_at = ? WHERE id = ?",
+                [(OrderStatus.COMPLETED, paid_at, paid_at, oid) for oid in order_ids],
+            )
+
     def mark_ordered_on(self, target_date: str) -> int:
         return self._execute(
             "UPDATE orders SET status = ? WHERE order_date = ? AND status = ?",

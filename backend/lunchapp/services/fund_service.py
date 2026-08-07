@@ -1,8 +1,13 @@
-"""Nghiệp vụ quỹ chung: số dư, nạp/rút, công nợ và chia phí ship."""
+"""Nghiệp vụ quỹ chung: số dư, nạp/rút, công nợ, chia phí ship, thanh toán bằng
+quỹ và góp quỹ hàng tháng (luồng 2 — thủ quỹ đặt đồ bằng tiền quỹ chung)."""
+
+import re
 
 from ..config import Config
 from ..core.dates import Clock
 from ..core.errors import ValidationError
+
+_MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 class FundService:
@@ -112,6 +117,93 @@ class FundService:
         debts = sorted(debts_by_user.values(), key=lambda d: d["total_owed"], reverse=True)
         grand_total = sum(d["total_owed"] for d in debts)
         return {"debts": debts, "grand_total": grand_total}
+
+    # ===== Thanh toán đơn bằng quỹ (luồng 2) =====
+
+    def pay_orders_from_fund(self, target_date, actor_id=None) -> dict:
+        """Thủ quỹ trả thẳng toàn bộ đơn ĐÃ CHỐT nhưng CHƯA xác nhận thanh toán
+        của một ngày bằng tiền quỹ — nhân viên khỏi phải tự chuyển khoản nữa,
+        khác với luồng 1 (người đứng ra đặt tự thu từng người)."""
+        target_date = Clock.parse_date(target_date)
+        if target_date is None:
+            raise ValidationError("Ngày không hợp lệ, cần định dạng YYYY-MM-DD")
+
+        orders = [
+            o for o in self.orders.list_for_date(target_date)
+            if o.is_locked and not o.is_confirmed
+        ]
+        if not orders:
+            raise ValidationError("Không có đơn nào cần thanh toán trong ngày này")
+
+        total = sum(o.total_cost for o in orders)
+        balance = self.fund.get_balance()
+        if total > balance:
+            need = f"{total:,}".replace(",", ".")
+            have = f"{balance:,}".replace(",", ".")
+            raise ValidationError(f"Số dư quỹ không đủ: cần {need}đ, quỹ còn {have}đ")
+
+        now = Clock.now()
+        self.orders.pay_from_fund([o.id for o in orders], now)
+        self.fund.record_transaction(
+            "order_payment", total, actor_id,
+            f"Trả {len(orders)} đơn ngày {target_date} bằng quỹ", now,
+        )
+        new_balance = self.fund.get_balance()
+
+        self.events.publish("fund_updated", {
+            "type": "order_payment", "amount": total, "balance": new_balance,
+        })
+        # Mỗi đơn coi như vừa được xác nhận thanh toán, để trang thực đơn của
+        # từng nhân viên cập nhật ngay qua kênh realtime sẵn có.
+        for order in orders:
+            self.events.publish("payment_confirmed", {
+                "order_id": order.id, "user_id": order.user_id,
+                "amount": order.total_cost, "confirmed_at": now,
+            })
+
+        return {
+            "date": target_date, "order_count": len(orders),
+            "total_paid": total, "balance": new_balance,
+        }
+
+    # ===== Góp quỹ hàng tháng (luồng 2) =====
+
+    def contribute_dues(self, user_id, amount, month: str, note: str = "") -> dict:
+        if not _MONTH_PATTERN.match(str(month or "")):
+            raise ValidationError("Tháng không hợp lệ, cần định dạng YYYY-MM")
+        amount = self._validate_amount(amount)
+
+        existing = self.fund.dues_for_month(month)
+        if any(tx.user_id == user_id for tx in existing):
+            raise ValidationError(f"Người này đã góp quỹ tháng {month} rồi")
+
+        self.fund.record_transaction(
+            "dues", amount, user_id, (note or "").strip() or None, Clock.now(), month=month,
+        )
+        new_balance = self.fund.get_balance()
+
+        self.events.publish("fund_updated", {
+            "type": "dues", "amount": amount, "balance": new_balance,
+        })
+        return {"status": "dues", "amount": amount, "month": month, "balance": new_balance}
+
+    def dues_overview(self, month: str) -> dict:
+        if not _MONTH_PATTERN.match(str(month or "")):
+            raise ValidationError("Tháng không hợp lệ, cần định dạng YYYY-MM")
+
+        contributed = self.fund.dues_for_month(month)
+        contributed_ids = {tx.user_id for tx in contributed}
+        pending = [u for u in self.users.list_all() if u.id not in contributed_ids]
+
+        return {
+            "month": month,
+            "contributed": [
+                {"user_id": tx.user_id, "user_name": tx.user_name, "amount": tx.amount}
+                for tx in contributed
+            ],
+            "pending": [{"id": u.id, "name": u.name, "email": u.email} for u in pending],
+            "total_collected": sum(tx.amount for tx in contributed),
+        }
 
     # ===== Chia phí ship (4.3) =====
 

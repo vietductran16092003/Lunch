@@ -344,7 +344,9 @@ export class MenuPage extends BasePage {
       Dom.el("p", {
         class: "subtitle",
         style: "margin:8px 0 0;",
-        text: "Thanh toán: Chuyển khoản cho người đặt",
+        text: this.order.payment_method === "fund"
+          ? "Thanh toán: Trả bằng quỹ chung"
+          : "Thanh toán: Chuyển khoản cho người đặt",
       })
     );
 
@@ -352,23 +354,31 @@ export class MenuPage extends BasePage {
       box.appendChild(this.buildCancelButton());
     }
 
-    if (this.order.status === "ordered" && !this.order.paid_at) {
+    const paidByFund = this.order.payment_method === "fund";
+
+    if (this.order.status === "ordered" && !this.order.paid_at && !paidByFund) {
       box.appendChild(
         Dom.notice("warning", "Quán đã nhận đơn", "Đến lúc chuyển khoản cho người đặt.")
       );
     }
-    if (this.order.awaiting_confirmation) {
+    if (this.order.awaiting_confirmation && !paidByFund) {
       box.appendChild(
         Dom.notice("info", "Đã báo chuyển khoản", "Đang chờ người đặt xác nhận đã nhận tiền.")
       );
     }
     if (this.order.status === "completed") {
       box.appendChild(
-        Dom.notice(
-          "success",
-          "Người đặt đã xác nhận nhận tiền",
-          "Xong rồi, bạn không cần làm gì thêm."
-        )
+        paidByFund
+          ? Dom.notice(
+              "success",
+              "Đã thanh toán bằng quỹ chung",
+              "Thủ quỹ đã trả tiền quán bằng quỹ, bạn không cần chuyển khoản."
+            )
+          : Dom.notice(
+              "success",
+              "Người đặt đã xác nhận nhận tiền",
+              "Xong rồi, bạn không cần làm gì thêm."
+            )
       );
     }
 
@@ -404,6 +414,10 @@ export class MenuPage extends BasePage {
   updatePaymentButton() {
     const button = Dom.byId("payment-method-btn");
     if (!button) return;
+
+    const paidByFund = this.order && this.order.payment_method === "fund";
+    button.hidden = Boolean(paidByFund);
+    if (paidByFund) return;
 
     const needsPayment =
       this.order && this.order.status === "ordered" && !this.order.paid_at;

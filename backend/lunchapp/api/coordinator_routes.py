@@ -37,7 +37,7 @@ def build_coordinator_blueprint(services) -> Blueprint:
     # ===== Đặt hộ nhân viên (Phase 4) =====
 
     @bp.get("/employees")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
+    @require_role(Role.COORDINATOR, Role.TREASURER, Role.ADMIN)
     def employees():
         """Danh bạ rút gọn để chọn người đặt hộ."""
         return jsonify({"users": services.auth.list_users()})

@@ -242,6 +242,9 @@ class Database:
 
         self._add_column_if_missing(cursor, "order_items", "note", "TEXT")
 
+        # Tháng góp quỹ (dạng "YYYY-MM"), chỉ có giá trị ở dòng type='dues'
+        self._add_column_if_missing(cursor, "fund_transactions", "month", "TEXT")
+
     def _create_indexes(self, cursor):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_reset ON users (reset_token)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_date ON orders (order_date)")
@@ -257,6 +260,9 @@ class Database:
         )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_fund_tx_created ON fund_transactions (created_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_fund_tx_month ON fund_transactions (month)"
         )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_polls_date ON polls (poll_date)")
         cursor.execute(
