@@ -20,14 +20,20 @@ export class Navbar {
             <a href="index.html">Thực đơn</a>
             <a href="history.html">Lịch sử</a>
           </nav>
-          <div id="user-info">
-            <span class="user-avatar" id="user-avatar" aria-hidden="true"></span>
-            <span id="user-name"></span>
-            <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
-            <a href="coordinator.html" id="coordinator-link" hidden>Gom đơn</a>
-            <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
-            <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
-            <a href="#" id="logout-link">Đăng xuất</a>
+          <div id="user-info" class="user-menu">
+            <button type="button" class="user-menu-trigger" id="user-menu-trigger"
+                    aria-haspopup="true" aria-expanded="false">
+              <span class="user-avatar" id="user-avatar" aria-hidden="true"></span>
+              <span id="user-name"></span>
+              <span class="user-menu-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="user-menu-dropdown" id="user-menu-dropdown">
+              <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
+              <a href="coordinator.html" id="coordinator-link" hidden>Gom đơn</a>
+              <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
+              <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
+              <a href="#" id="logout-link">Đăng xuất</a>
+            </div>
           </div>
         </div>
       </header>
@@ -35,8 +41,34 @@ export class Navbar {
 
     this.highlightActive();
     Dom.byId("logout-link").addEventListener("click", (e) => this.logout(e));
+    this.bindUserMenu();
 
     return this.loadCurrentUser();
+  }
+
+  /** Trỏ chuột vào là mở (CSS :hover), nhưng vẫn bấm/gõ phím dùng được cho
+   * màn cảm ứng và bàn phím — không chỉ dựa vào hover. */
+  bindUserMenu() {
+    const menu = Dom.byId("user-info");
+    const trigger = Dom.byId("user-menu-trigger");
+    if (!menu || !trigger) return;
+
+    const close = () => {
+      menu.classList.remove("is-open");
+      trigger.setAttribute("aria-expanded", "false");
+    };
+
+    trigger.addEventListener("click", () => {
+      const open = menu.classList.toggle("is-open");
+      trigger.setAttribute("aria-expanded", String(open));
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menu.contains(e.target)) close();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
   }
 
   highlightActive() {
