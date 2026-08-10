@@ -25,40 +25,41 @@ export class DebtsTable {
       return;
     }
 
-    const tbody = Dom.el("tbody");
-    data.debts.forEach((debt) => {
-      const orderList = debt.orders.map((o) => `${o.order_date} (${Formatter.money(o.amount)})`);
-      tbody.appendChild(
-        Dom.el(
-          "tr",
-          {},
-          Dom.el("td", { text: debt.user_name }),
-          Dom.el("td", { text: orderList.join(", ") }),
-          Dom.el("td", { class: "num mono", text: Formatter.money(debt.total_owed) })
-        )
-      );
-    });
-
-    const table = Dom.el("table", {
-      html:
-        "<caption>Người còn nợ, sắp xếp theo số tiền giảm dần</caption>" +
-        "<thead><tr><th scope='col'>Nhân viên</th><th scope='col'>Đơn chưa thanh toán</th>" +
-        "<th scope='col' class='num'>Tổng nợ</th></tr></thead>",
-    });
-    table.appendChild(tbody);
-    table.appendChild(
+    this.container.append(
       Dom.el(
-        "tfoot",
-        {},
-        Dom.el(
-          "tr",
-          {},
-          Dom.el("td", { colspan: "2", text: "Tổng cộng" }),
-          Dom.el("td", { class: "num mono", text: Formatter.money(data.grand_total) })
+        "div",
+        { class: "debts-total" },
+        Dom.el("span", { text: `${data.debts.length} người còn nợ` }),
+        Dom.el("strong", { class: "mono", text: Formatter.money(data.grand_total) })
+      ),
+      Dom.el(
+        "div",
+        { class: "debts-list" },
+        ...data.debts.map((debt) => this.buildDebtCard(debt))
+      )
+    );
+  }
+
+  buildDebtCard(debt) {
+    return Dom.el(
+      "div",
+      { class: "debt-card" },
+      Dom.el(
+        "div",
+        { class: "debt-card-head" },
+        Dom.el("span", { class: "debt-name", text: debt.user_name }),
+        Dom.el("strong", { class: "mono", text: Formatter.money(debt.total_owed) })
+      ),
+      Dom.el(
+        "div",
+        { class: "debt-orders" },
+        ...debt.orders.map((o) =>
+          Dom.el("span", {
+            class: "debt-order-pill",
+            text: `${o.order_date} · ${Formatter.money(o.amount)}`,
+          })
         )
       )
     );
-
-    this.container.appendChild(Dom.el("div", { class: "table-wrap" }, table));
   }
 }

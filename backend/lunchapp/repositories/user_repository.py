@@ -107,6 +107,17 @@ class UserRepository(BaseRepository):
             )
         return clean
 
+    def delete(self, user_id):
+        with self.db.session(commit=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM user_roles WHERE user_id = ?", (user_id,))
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    def has_orders(self, user_id) -> bool:
+        return self._fetch_one(
+            "SELECT 1 FROM orders WHERE user_id = ?", (user_id,)
+        ) is not None
+
     def count_with_role(self, role: str) -> int:
         row = self._fetch_one(
             "SELECT COUNT(*) AS total FROM user_roles WHERE role = ?", (role,)

@@ -242,6 +242,31 @@ class AuthService:
         self.users.replace_roles(user.id, wanted)
         return self.users.find_by_id(user.id).to_directory_entry()
 
+    def delete_user(self, user_id, actor_id=None) -> dict:
+        """Xoá hẳn một tài khoản khỏi hệ thống.
+
+        Chặn xoá chính mình (tự khoá cửa), xoá quản trị viên cuối cùng, và xoá
+        người đã có lịch sử đặt món (mất dấu vết đối soát thu chi) — những
+        trường hợp này nên đổi vai trò thay vì xoá tài khoản.
+        """
+        user = self.users.find_by_id(user_id)
+        if user is None:
+            raise NotFoundError("Không tìm thấy người dùng")
+
+        if actor_id is not None and int(actor_id) == int(user.id):
+            raise ConflictError("Bạn không thể tự xoá chính mình")
+
+        if user.has_role(Role.ADMIN) and self.users.count_with_role(Role.ADMIN) <= 1:
+            raise ConflictError("Hệ thống phải còn ít nhất một quản trị viên")
+
+        if self.users.has_orders(user.id):
+            raise ConflictError(
+                "Người này đã có lịch sử đặt món, không thể xoá — đổi vai trò thay vì xoá"
+            )
+
+        self.users.delete(user.id)
+        return {"status": "deleted"}
+
     # ===== Cấu hình cho frontend =====
 
     def auth_options(self) -> dict:

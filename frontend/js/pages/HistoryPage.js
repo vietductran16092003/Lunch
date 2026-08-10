@@ -8,12 +8,17 @@ import { BasePage } from "./BasePage.js";
 export class HistoryPage extends BasePage {
   constructor() {
     super();
+    this.history = [];
     this.list = new HistoryList("history-list", {
       onReorder: (order, button) => this.reorder(order, button),
+      onSelectionChange: (selected) => this.updateToolbar(selected),
     });
   }
 
   async init() {
+    Dom.byId("history-select-all").addEventListener("change", (e) => this.toggleSelectAll(e));
+    Dom.byId("history-delete-selected").addEventListener("click", () => this.deleteSelected());
+
     await this.load();
     // Người đặt xác nhận nhận tiền thì lịch sử phải đổi trạng thái ngay
     this.listen({ payment_confirmed: () => this.load() });
@@ -25,12 +30,49 @@ export class HistoryPage extends BasePage {
         api.get("/orders/history"),
         api.get("/menu"),
       ]);
+      this.history = history.history || [];
       const todayKeys = new Set(
         (menu.items || []).map((item) => HistoryList.itemKey(item.name, item.restaurant_name))
       );
-      this.list.render(history.history, todayKeys);
+      this.list.render(this.history, todayKeys);
+
+      const toolbar = Dom.byId("history-toolbar");
+      const hasPending = this.list.pendingIds(this.history).length > 0;
+      toolbar.hidden = !hasPending;
+      Dom.byId("history-select-all").checked = false;
+      this.updateToolbar(new Set());
     } catch (err) {
       this.list.showError("Không tải được lịch sử.");
+    }
+  }
+
+  updateToolbar(selected) {
+    const button = Dom.byId("history-delete-selected");
+    button.disabled = selected.size === 0;
+    button.textContent = selected.size ? `Xoá đã chọn (${selected.size})` : "Xoá đã chọn";
+  }
+
+  toggleSelectAll(event) {
+    const ids = event.target.checked ? this.list.pendingIds(this.history) : [];
+    this.list.setSelected(ids);
+  }
+
+  async deleteSelected() {
+    const ids = [...this.list.selected];
+    if (!ids.length) return;
+    if (!window.confirm(`Xoá ${ids.length} đơn đang chờ đã chọn? Không thể hoàn tác.`)) return;
+
+    const button = Dom.byId("history-delete-selected");
+    Dom.setBusy(button, true, "Đang xoá");
+    try {
+      await Promise.all(ids.map((id) => api.delete(`/orders/${id}`)));
+      toasts.success("Đã xoá đơn", `${ids.length} đơn đang chờ`);
+      await this.load();
+    } catch (err) {
+      toasts.error("Xoá không thành công", err.message);
+      await this.load();
+    } finally {
+      Dom.setBusy(button, false);
     }
   }
 

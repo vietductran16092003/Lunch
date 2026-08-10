@@ -46,6 +46,42 @@
   --shadow-lg:0 12px 28px rgba(59,42,32,.12);
 
   --z-sticky:20; --z-overlay:100; --z-toast:1000;
+
+  --navbar-bg:rgba(255, 247, 240, 0.94);
+}
+
+/* ===== Chế độ tối ===== */
+:root[data-theme="dark"]{
+  --bg-base:#1C1712;
+  --bg-surface:#26201A;
+  --bg-surface-raised:#332A20;
+  --bg-sunken:#211B15;
+  --border:#3D3226;
+  --border-strong:#4E4030;
+
+  --text-primary:#F2E9DE;
+  --text-secondary:#B8A791;
+
+  --accent:#F0904F;
+  --accent-strong:#F7B37D;
+  --accent-ink:#241a0e;
+  --accent-soft:#5A3A1E;
+  --accent-wash:#332619;
+
+  --success:#6FCB92;
+  --success-soft:#1F3527;
+  --warning:#E0B84D;
+  --warning-soft:#3A2F14;
+  --critical:#F0897E;
+  --critical-soft:#3D211D;
+  --info:#7DBEE0;
+  --info-soft:#1E2E38;
+
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 4px 12px rgba(0,0,0,.35);
+  --shadow-lg:0 12px 28px rgba(0,0,0,.4);
+
+  --navbar-bg:rgba(28, 23, 18, 0.94);
 }
 
 * { box-sizing: border-box; }
@@ -92,7 +128,7 @@ body {
   gap: var(--space-3);
   position: sticky;
   top: 0;
-  background: rgba(255, 247, 240, 0.94);
+  background: var(--navbar-bg);
   backdrop-filter: blur(8px);
   z-index: var(--z-sticky);
 }
@@ -214,6 +250,21 @@ body {
 
 .user-menu-dropdown a:hover { background: var(--bg-surface-raised); }
 .user-menu-dropdown a.active { background: var(--accent-wash); color: var(--accent-strong); }
+
+.user-menu-action {
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: auto;
+}
+.user-menu-action:hover { background: var(--bg-surface-raised); }
 
 .user-avatar {
   width: 28px;
@@ -1227,6 +1278,31 @@ table tfoot td {
 /* ===== Lịch sử: thẻ đơn mở rộng xem chi tiết ===== */
 .history-card { padding: 0; overflow: hidden; }
 
+.history-head { display: flex; align-items: center; }
+.history-head .history-select { flex: none; margin-left: var(--space-4); }
+.history-head .history-summary { width: auto; flex: 1; }
+
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.check-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+.check-inline input { width: auto; min-height: auto; }
+
 .history-summary {
   display: flex;
   align-items: center;
@@ -1587,6 +1663,49 @@ tr.is-dirty td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
 
 .poll-option-name { font-size: 14px; }
 .poll-option-votes { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+
+/* ===== Người còn nợ (redesign) ===== */
+.debts-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--critical-soft);
+  color: var(--critical);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+}
+.debts-total strong { font-size: 16px; }
+
+.debts-list { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.debt-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.debt-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.debt-name { font-weight: 600; }
+
+.debt-orders { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.debt-order-pill {
+  font-size: 12.5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
 
 /* ===== Cảnh báo dinh dưỡng (Phase 5) ===== */
 .nutrition-badges {

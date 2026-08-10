@@ -12,10 +12,25 @@ const STATUS_BADGE = ["pending", "closed", "ordered", "completed"];
 
 /** Danh sách lịch sử, mỗi đơn mở ra được bảng chi tiết hóa đơn. */
 export class HistoryList {
-  constructor(containerId = "history-list", { onReorder } = {}) {
+  constructor(containerId = "history-list", { onReorder, onSelectionChange } = {}) {
     this.container = Dom.byId(containerId);
     // Trang gọi API thật; component chỉ lo hiển thị (mã 3.3 — đặt lại đơn cũ)
     this.onReorder = onReorder || (() => {});
+    this.onSelectionChange = onSelectionChange || (() => {});
+    this.selected = new Set();
+  }
+
+  /** Id các đơn đang chờ (pending) — chỉ nhóm này xoá được. */
+  pendingIds(history) {
+    return (history || []).filter((o) => o.status === "pending").map((o) => o.id);
+  }
+
+  setSelected(ids) {
+    this.selected = new Set(ids);
+    this.container.querySelectorAll(".history-select").forEach((box) => {
+      box.checked = this.selected.has(parseInt(box.dataset.orderId, 10));
+    });
+    this.onSelectionChange(this.selected);
   }
 
   static statusClass(status) {
@@ -51,6 +66,23 @@ export class HistoryList {
 
   buildCard(order, index, todayKeys) {
     const detailId = `history-detail-${order.id}`;
+
+    const checkbox = order.status === "pending"
+      ? Dom.el("input", {
+          type: "checkbox",
+          class: "history-select",
+          "data-order-id": order.id,
+          "aria-label": `Chọn đơn ngày ${order.order_date} để xoá`,
+        })
+      : null;
+    if (checkbox) {
+      checkbox.addEventListener("click", (e) => e.stopPropagation());
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) this.selected.add(order.id);
+        else this.selected.delete(order.id);
+        this.onSelectionChange(this.selected);
+      });
+    }
 
     const summary = Dom.el(
       "button",
@@ -95,7 +127,11 @@ export class HistoryList {
       detail.hidden = false;
     }
 
-    return Dom.el("article", { class: "card history-card" }, summary, detail);
+    const head = checkbox
+      ? Dom.el("div", { class: "history-head" }, checkbox, summary)
+      : summary;
+
+    return Dom.el("article", { class: "card history-card" }, head, detail);
   }
 
   buildDetailTable(order) {

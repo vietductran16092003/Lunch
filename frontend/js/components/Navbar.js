@@ -1,6 +1,7 @@
 import { api } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
 import { hasAnyRole } from "../core/roles.js";
+import { Theme } from "../core/theme.js";
 
 /** Thanh điều hướng dùng chung, tự tải người dùng hiện tại. */
 export class Navbar {
@@ -31,6 +32,7 @@ export class Navbar {
               <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
               <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
               <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
+              <button type="button" id="theme-toggle-btn" class="user-menu-action"></button>
               <a href="#" id="logout-link">Đăng xuất</a>
             </div>
           </div>
@@ -41,8 +43,25 @@ export class Navbar {
     this.highlightActive();
     Dom.byId("logout-link").addEventListener("click", (e) => this.logout(e));
     this.bindUserMenu();
+    this.bindThemeToggle();
 
     return this.loadCurrentUser();
+  }
+
+  bindThemeToggle() {
+    const button = Dom.byId("theme-toggle-btn");
+    if (!button) return;
+
+    const render = () => {
+      const isDark = Theme.get() === "dark";
+      button.textContent = isDark ? "☀️ Giao diện sáng" : "🌙 Giao diện tối";
+    };
+    render();
+
+    button.addEventListener("click", () => {
+      Theme.toggle();
+      render();
+    });
   }
 
   /** Trỏ chuột vào là mở (CSS :hover), nhưng vẫn bấm/gõ phím dùng được cho

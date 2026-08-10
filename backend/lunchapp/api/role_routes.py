@@ -23,4 +23,9 @@ def build_role_blueprint(services) -> Blueprint:
             services.auth.set_roles(user_id, data.get("roles"), actor_id=SessionUser.id())
         )
 
+    @bp.delete("/users/<int:user_id>")
+    @require_role(Role.ADMIN)
+    def delete_user(user_id):
+        return jsonify(services.auth.delete_user(user_id, actor_id=SessionUser.id()))
+
     return bp

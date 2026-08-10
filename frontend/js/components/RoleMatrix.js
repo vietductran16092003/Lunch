@@ -96,9 +96,42 @@ export class RoleMatrix {
     });
 
     save.addEventListener("click", () => this.save(user, save));
-    row.appendChild(Dom.el("td", {}, save));
+
+    const remove = Dom.el("button", {
+      type: "button",
+      class: "danger",
+      text: "Xóa",
+      disabled: isSelf,
+      title: isSelf ? "Không thể tự xoá chính mình" : "",
+      "aria-label": `Xoá tài khoản ${user.name}`,
+    });
+    remove.addEventListener("click", () => this.remove(user, remove));
+
+    row.appendChild(
+      Dom.el("td", { style: "display:flex; gap:6px; flex-wrap:wrap;" }, save, remove)
+    );
 
     return row;
+  }
+
+  async remove(user, button) {
+    if (!window.confirm(
+      `Xoá hẳn tài khoản "${user.name}" (${user.email})? Không thể hoàn tác.`
+    )) {
+      return;
+    }
+
+    Dom.setBusy(button, true, `Đang xoá ${user.name}`);
+    try {
+      await api.delete(`/admin/users/${user.id}`);
+      this.users = this.users.filter((u) => u.id !== user.id);
+      this.draft.delete(user.id);
+      toasts.success("Đã xoá tài khoản", user.name);
+      this.render();
+    } catch (err) {
+      Dom.setBusy(button, false);
+      toasts.error("Không xoá được", err.message);
+    }
   }
 
   buildRoleCell(user, role, isSelf, row, save) {

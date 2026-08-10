@@ -1,5 +1,4 @@
 import { DebtsTable } from "../components/DebtsTable.js";
-import { FundLedger } from "../components/FundLedger.js";
 import { api } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
 import { Formatter } from "../core/Formatter.js";
@@ -7,11 +6,18 @@ import { hasAnyRole } from "../core/roles.js";
 import { toasts } from "../core/ToastManager.js";
 import { BasePage } from "./BasePage.js";
 
-/** Trang thủ quỹ: số dư, nạp/rút, sổ đối soát, theo dõi nợ (mã 5.3–5.6). */
+const TYPE_LABELS = {
+  topup: "Ghi vào quỹ",
+  withdraw: "Ghi vào quỹ",
+  "pay-fund": "Trả bằng quỹ",
+  dues: "Ghi nhận góp quỹ",
+};
+
+/** Trang thủ quỹ: số dư, quản lý quỹ (nạp/rút/trả đơn/góp tháng gộp chung
+ * một form), theo dõi nợ, báo cáo chi tiết (mã 5.3–5.6). */
 export class TreasuryPage extends BasePage {
   constructor() {
     super();
-    this.ledger = new FundLedger();
     this.debts = new DebtsTable();
   }
 
@@ -30,10 +36,9 @@ export class TreasuryPage extends BasePage {
       return;
     }
 
-    Dom.byId("fund-form").addEventListener("submit", (e) => this.submitTransaction(e));
+    Dom.byId("fund-type").addEventListener("change", () => this.updateFormFields());
+    Dom.byId("fund-form").addEventListener("submit", (e) => this.submitFundForm(e));
     Dom.byId("report-form").addEventListener("submit", (e) => this.loadReport(e));
-    Dom.byId("pay-fund-form").addEventListener("submit", (e) => this.payFromFund(e));
-    Dom.byId("dues-form").addEventListener("submit", (e) => this.submitDues(e));
     Dom.byId("dues-month").addEventListener("change", () => this.loadDuesOverview());
 
     const today = Formatter.todayIso();
@@ -43,15 +48,15 @@ export class TreasuryPage extends BasePage {
     this.currentMonth = today.slice(0, 7);
     Dom.byId("dues-month").value = this.currentMonth;
 
+    this.updateFormFields();
+
     await Promise.all([
-      this.loadBalance(), this.loadDebts(), this.loadLedger(),
-      this.loadDuesEmployees(), this.loadDuesOverview(),
+      this.loadBalance(), this.loadDebts(), this.loadDuesEmployees(),
     ]);
 
     this.listen({
       fund_updated: () => {
         this.loadBalance();
-        this.loadLedger();
         this.loadDuesOverview();
       },
       payment_confirmed: () => this.loadDebts(),
@@ -90,23 +95,34 @@ export class TreasuryPage extends BasePage {
     }
   }
 
-  async loadLedger() {
-    try {
-      const data = await api.get("/fund/ledger");
-      this.ledger.render(data.transactions);
-    } catch (err) {
-      this.ledger.showError(err.message);
-    }
+  // ===== Form quản lý quỹ gộp chung (nạp/rút/trả đơn/góp tháng) =====
+
+  updateFormFields() {
+    const type = Dom.byId("fund-type").value;
+    Dom.byId("fund-amount-field").hidden = type === "pay-fund";
+    Dom.byId("fund-note-field").hidden = type !== "topup" && type !== "withdraw";
+    Dom.byId("pay-fund-date-field").hidden = type !== "pay-fund";
+    Dom.byId("dues-month-field").hidden = type !== "dues";
+    Dom.byId("dues-employee-field").hidden = type !== "dues";
+    Dom.byId("dues-overview-box").hidden = type !== "dues";
+    Dom.byId("fund-submit-btn").textContent = TYPE_LABELS[type];
+
+    if (type === "dues") this.loadDuesOverview();
   }
 
-  async submitTransaction(event) {
+  async submitFundForm(event) {
     event.preventDefault();
-
     const type = Dom.byId("fund-type").value;
+    if (type === "topup" || type === "withdraw") return this.submitTransaction(type);
+    if (type === "pay-fund") return this.payFromFund();
+    if (type === "dues") return this.submitDues();
+  }
+
+  async submitTransaction(type) {
     const amountInput = Dom.byId("fund-amount");
     const noteInput = Dom.byId("fund-note");
     const message = Dom.byId("fund-form-message");
-    const button = event.target.querySelector("button[type='submit']");
+    const button = Dom.byId("fund-submit-btn");
 
     amountInput.removeAttribute("aria-invalid");
     const amount = parseInt(amountInput.value, 10);
@@ -118,7 +134,6 @@ export class TreasuryPage extends BasePage {
     }
     Dom.setText("fund-amount-error", "");
 
-    // Thao tác tiền bắt buộc phải xác nhận trước khi ghi
     const verb = type === "topup" ? "nạp" : "rút";
     if (!window.confirm(`Xác nhận ${verb} ${Formatter.money(amount)} vào quỹ chung?`)) return;
 
@@ -133,7 +148,7 @@ export class TreasuryPage extends BasePage {
 
       amountInput.value = "";
       noteInput.value = "";
-      await Promise.all([this.loadBalance(), this.loadLedger()]);
+      await this.loadBalance();
     } catch (err) {
       message.className = "message-error";
       message.textContent = err.message;
@@ -143,13 +158,10 @@ export class TreasuryPage extends BasePage {
     }
   }
 
-  // ===== Thanh toán đơn bằng quỹ (luồng 2) =====
-
-  async payFromFund(event) {
-    event.preventDefault();
+  async payFromFund() {
     const dateInput = Dom.byId("pay-fund-date");
-    const message = Dom.byId("pay-fund-message");
-    const button = event.target.querySelector("button[type='submit']");
+    const message = Dom.byId("fund-form-message");
+    const button = Dom.byId("fund-submit-btn");
 
     if (!dateInput.value) return;
     if (!window.confirm(`Trả toàn bộ đơn chưa thanh toán ngày ${dateInput.value} bằng quỹ chung?`)) {
@@ -163,7 +175,7 @@ export class TreasuryPage extends BasePage {
       message.textContent =
         `Đã trả ${result.order_count} đơn, tổng ${Formatter.money(result.total_paid)}.`;
       toasts.success("Đã thanh toán bằng quỹ", message.textContent);
-      await Promise.all([this.loadBalance(), this.loadLedger(), this.loadDebts()]);
+      await Promise.all([this.loadBalance(), this.loadDebts()]);
     } catch (err) {
       message.className = "message-error";
       message.textContent = err.message;
@@ -172,8 +184,6 @@ export class TreasuryPage extends BasePage {
       Dom.setBusy(button, false);
     }
   }
-
-  // ===== Góp quỹ hàng tháng (luồng 2) =====
 
   async loadDuesEmployees() {
     const select = Dom.byId("dues-employee");
@@ -192,7 +202,7 @@ export class TreasuryPage extends BasePage {
 
   async loadDuesOverview() {
     const box = Dom.byId("dues-overview-box");
-    if (!box) return;
+    if (!box || box.hidden) return;
     const month = Dom.byId("dues-month").value || this.currentMonth;
     try {
       const data = await api.get(`/fund/dues?month=${encodeURIComponent(month)}`);
@@ -232,13 +242,12 @@ export class TreasuryPage extends BasePage {
     }
   }
 
-  async submitDues(event) {
-    event.preventDefault();
+  async submitDues() {
     const month = Dom.byId("dues-month").value;
     const employeeSelect = Dom.byId("dues-employee");
-    const amountInput = Dom.byId("dues-amount");
-    const message = Dom.byId("dues-form-message");
-    const button = event.target.querySelector("button[type='submit']");
+    const message = Dom.byId("fund-form-message");
+    const button = Dom.byId("fund-submit-btn");
+    const amountInput = Dom.byId("fund-amount");
 
     if (!month || !employeeSelect.value || !amountInput.value) {
       message.className = "message-error";
@@ -269,7 +278,7 @@ export class TreasuryPage extends BasePage {
     }
   }
 
-  // ===== Báo cáo AI theo khoảng ngày (Phase 4) =====
+  // ===== Báo cáo chi tiết (gộp sổ đối soát + báo cáo AI theo khoảng ngày) =====
 
   async loadReport(event) {
     event.preventDefault();

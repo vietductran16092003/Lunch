@@ -2,12 +2,13 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
+  <script>try{if(localStorage.getItem('lunchapp-theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quỹ chung</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=22">
+  <link rel="stylesheet" href="assets/css/style.css?v=23">
 </head>
 <body data-page="treasury">
   <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
@@ -15,13 +16,13 @@
 
   <main class="container" id="main">
     <h1>Quỹ chung</h1>
-    <p class="subtitle">Số dư, sổ đối soát và danh sách người còn nợ tiền.</p>
+    <p class="subtitle">Số dư, người còn nợ và báo cáo chi tiêu.</p>
 
     <div class="stat-row" id="fund-stats"></div>
 
     <div class="section-head">
-      <h2>Nạp / rút quỹ</h2>
-      <p>Mỗi lần nạp hoặc rút đều được ghi vào sổ đối soát bên dưới, không sửa hay xoá được sau đó.</p>
+      <h2>Quản lý quỹ</h2>
+      <p>Nạp/rút tiền mặt, trả đơn thẳng bằng quỹ, hoặc ghi nhận góp quỹ hàng tháng — chọn loại giao dịch trước.</p>
     </div>
 
     <form id="fund-form" novalidate>
@@ -30,63 +31,44 @@
         <select id="fund-type" name="fund-type">
           <option value="topup">Nạp vào quỹ</option>
           <option value="withdraw">Rút khỏi quỹ</option>
+          <option value="pay-fund">Trả đơn một ngày bằng quỹ</option>
+          <option value="dues">Góp quỹ hàng tháng</option>
         </select>
       </div>
-      <div class="field field-sm">
+
+      <div class="field field-sm" id="fund-amount-field">
         <label for="fund-amount">Số tiền (đ)<span class="required-mark" aria-hidden="true">*</span></label>
         <input type="number" id="fund-amount" name="fund-amount" min="1" step="1000"
-               inputmode="numeric" required aria-describedby="fund-amount-error">
+               inputmode="numeric" aria-describedby="fund-amount-error">
         <span class="field-error" id="fund-amount-error" role="alert"></span>
       </div>
-      <div class="field field-lg">
+
+      <div class="field field-lg" id="fund-note-field">
         <label for="fund-note">Ghi chú</label>
         <input type="text" id="fund-note" name="fund-note" placeholder="Lý do nạp/rút" autocomplete="off">
       </div>
-      <button type="submit">Ghi vào quỹ</button>
-      <p id="fund-form-message" role="status" aria-live="polite" style="margin:0;"></p>
-    </form>
 
-    <!-- Luồng 2: thủ quỹ trả đơn thẳng bằng quỹ, khỏi thu riêng từng người -->
-    <div class="section-head">
-      <h2>Thanh toán đơn bằng quỹ</h2>
-      <p>Trả thẳng toàn bộ đơn đã chốt nhưng chưa xác nhận của một ngày bằng tiền quỹ chung — dùng khi thủ quỹ là người đặt và ứng tiền quỹ ra mua, không thu riêng từng người.</p>
-    </div>
-
-    <form id="pay-fund-form" novalidate>
-      <div class="field field-sm">
-        <label for="pay-fund-date">Ngày</label>
-        <input type="date" id="pay-fund-date" name="pay-fund-date" required>
+      <div class="field field-sm" id="pay-fund-date-field" hidden>
+        <label for="pay-fund-date">Ngày cần trả</label>
+        <input type="date" id="pay-fund-date" name="pay-fund-date">
       </div>
-      <button type="submit">Trả bằng quỹ</button>
-      <p id="pay-fund-message" role="status" aria-live="polite" style="margin:0;"></p>
-    </form>
 
-    <!-- Luồng 2: góp quỹ hàng tháng theo đầu người -->
-    <div class="section-head">
-      <h2>Góp quỹ hàng tháng</h2>
-      <p>Ghi nhận từng người đã góp bao nhiêu vào quỹ trong tháng, và ai còn chưa góp.</p>
-    </div>
-
-    <form id="dues-form" novalidate>
-      <div class="field field-sm">
+      <div class="field field-sm" id="dues-month-field" hidden>
         <label for="dues-month">Tháng</label>
-        <input type="month" id="dues-month" name="dues-month" required>
+        <input type="month" id="dues-month" name="dues-month">
       </div>
-      <div class="field">
+      <div class="field" id="dues-employee-field" hidden>
         <label for="dues-employee">Nhân viên</label>
         <select id="dues-employee" name="dues-employee">
           <option value="">— Chọn nhân viên —</option>
         </select>
       </div>
-      <div class="field field-sm">
-        <label for="dues-amount">Số tiền góp (đ)<span class="required-mark" aria-hidden="true">*</span></label>
-        <input type="number" id="dues-amount" name="dues-amount" min="1" step="1000" inputmode="numeric">
-      </div>
-      <button type="submit">Ghi nhận góp quỹ</button>
-      <p id="dues-form-message" role="status" aria-live="polite" style="margin:0;"></p>
+
+      <button type="submit" id="fund-submit-btn">Ghi vào quỹ</button>
+      <p id="fund-form-message" role="status" aria-live="polite" style="margin:0;"></p>
     </form>
 
-    <div id="dues-overview-box" class="card"></div>
+    <div id="dues-overview-box" class="card" hidden></div>
 
     <div class="section-head">
       <h2>Người còn nợ</h2>
@@ -97,19 +79,10 @@
       <div class="skeleton" style="min-height:120px;"></div>
     </div>
 
+    <!-- Gộp sổ đối soát + báo cáo AI thành một báo cáo chi tiết duy nhất -->
     <div class="section-head">
-      <h2>Sổ đối soát</h2>
-      <p>50 giao dịch gần nhất, mới nhất trước.</p>
-    </div>
-
-    <div id="ledger-box" aria-busy="true">
-      <div class="skeleton" style="min-height:160px;"></div>
-    </div>
-
-    <!-- Báo cáo AI theo khoảng ngày (Phase 4) -->
-    <div class="section-head">
-      <h2>Báo cáo chi tiêu</h2>
-      <p>Tổng hợp theo khoảng ngày: món phổ biến, người chi nhiều nhất.</p>
+      <h2>Báo cáo chi tiết</h2>
+      <p>Chọn khoảng ngày để xem tổng chi, món phổ biến, người chi nhiều nhất.</p>
     </div>
 
     <form id="report-form" novalidate>
@@ -127,6 +100,6 @@
     <div id="report-box" class="card"></div>
   </main>
 
-  <script type="module" src="js/main.js?v=22"></script>
+  <script type="module" src="js/main.js?v=23"></script>
 </body>
 </html>
