@@ -3,8 +3,9 @@ import { Formatter } from "../core/Formatter.js";
 
 /** Dải chọn ngày. Chỉ hiện khi có từ 2 ngày trở lên để đỡ rối. */
 export class DatePicker {
-  constructor(containerId, onSelect) {
+  constructor(containerId, onSelect, titleId = null) {
     this.container = Dom.byId(containerId);
+    this.title = titleId ? Dom.byId(titleId) : null;
     this.onSelect = onSelect;
   }
 
@@ -13,11 +14,13 @@ export class DatePicker {
 
     if (!days || days.length < 2) {
       this.container.hidden = true;
+      if (this.title) this.title.hidden = true;
       Dom.clear(this.container);
       return;
     }
 
     this.container.hidden = false;
+    if (this.title) this.title.hidden = false;
     Dom.clear(this.container);
     days.forEach((day) => {
       this.container.appendChild(this.buildChip(day, selectedDate, today));

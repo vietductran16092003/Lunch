@@ -160,16 +160,6 @@ class Database:
             )
         """)
 
-        # Lịch trực điều phối: mỗi ngày đúng một người, nên date làm khoá chính.
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS coordinator_schedule (
-                date TEXT PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        """)
-
         # Cấu hình giờ chốt theo từng ngày. Bảng dựng sẵn ở đây để phần nghiệp vụ
         # deadline (mục 4.1) chỉ còn việc đọc/ghi, không phải đụng lại lược đồ.
         cursor.execute("""
@@ -178,43 +168,6 @@ class Database:
                 cutoff TEXT,
                 auto_lock INTEGER DEFAULT 1,
                 updated_at TEXT
-            )
-        """)
-
-        # Bình chọn quán ăn (Phase 4). Chỉ một câu hỏi + nhiều lựa chọn, không
-        # cần đa poll song song ở quy mô app này.
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS polls (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                question TEXT NOT NULL,
-                poll_date TEXT NOT NULL,
-                created_by INTEGER NOT NULL,
-                closed INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (created_by) REFERENCES users (id)
-            )
-        """)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS poll_options (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                poll_id INTEGER NOT NULL,
-                label TEXT NOT NULL,
-                FOREIGN KEY (poll_id) REFERENCES polls (id)
-            )
-        """)
-
-        # Một người chỉ một phiếu mỗi poll; đổi ý thì ghi đè bằng UPDATE OR
-        # REPLACE, không cộng dồn phiếu.
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS poll_votes (
-                poll_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                option_id INTEGER NOT NULL,
-                voted_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (poll_id, user_id),
-                FOREIGN KEY (poll_id) REFERENCES polls (id),
-                FOREIGN KEY (option_id) REFERENCES poll_options (id)
             )
         """)
 
@@ -255,18 +208,10 @@ class Database:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles (user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles (role)")
         cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_coordinator_schedule_user "
-            "ON coordinator_schedule (user_id)"
-        )
-        cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_fund_tx_created ON fund_transactions (created_at)"
         )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_fund_tx_month ON fund_transactions (month)"
-        )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_polls_date ON polls (poll_date)")
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON poll_options (poll_id)"
         )
 
     def _seed_fund(self, cursor):

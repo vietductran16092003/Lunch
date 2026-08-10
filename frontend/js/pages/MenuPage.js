@@ -21,7 +21,7 @@ export class MenuPage extends BasePage {
 
     this.stepper = new OrderStepper();
     this.grid = new MenuGrid("menu-list", (selection) => this.renderSelectionTotals(selection));
-    this.datePicker = new DatePicker("date-picker", (date) => this.switchDate(date));
+    this.datePicker = new DatePicker("date-picker", (date) => this.switchDate(date), "date-picker-title");
     this.modal = new PaymentModal({ onPaid: () => this.loadOrder() });
   }
 
@@ -40,12 +40,9 @@ export class MenuPage extends BasePage {
     });
 
     await this.loadDates();
-    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions(), this.loadPoll()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
 
     this.listen({
-      poll_opened: () => this.loadPoll(),
-      poll_voted: () => this.loadPoll(),
-      poll_closed: () => this.loadPoll(),
       orders_locked: (data) => {
         // Chỉ báo khi đúng ngày đang xem bị chốt
         if (!data.date || data.date === this.selectedDate) {
@@ -71,7 +68,7 @@ export class MenuPage extends BasePage {
 
   async refreshAll() {
     await this.loadDates();
-    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions(), this.loadPoll()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
   }
 
   /** Gợi ý món dựa trên lịch sử đặt của chính người dùng (Phase 3). */
@@ -184,7 +181,7 @@ export class MenuPage extends BasePage {
     if (!date || date === this.selectedDate) return;
     this.selectedDate = date;
     this.datePicker.render(this.availableDates, this.selectedDate, this.today);
-    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions(), this.loadPoll()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
   }
 
   // ===== Hiển thị =====
@@ -197,64 +194,6 @@ export class MenuPage extends BasePage {
     Dom.setText(
       "selection-count",
       count === 0 ? "Chưa chọn món nào" : `${count} phần · ${selection.length} món`
-    );
-  }
-
-  // ===== Bình chọn quán ăn (Phase 4) =====
-
-  async loadPoll() {
-    const box = Dom.byId("poll-widget");
-    if (!box) return;
-    try {
-      const query = this.selectedDate ? `?date=${encodeURIComponent(this.selectedDate)}` : "";
-      const data = await api.get(`/polls/current${query}`);
-      this.renderPoll(box, data.poll);
-    } catch (err) {
-      Dom.clear(box);
-    }
-  }
-
-  renderPoll(box, poll) {
-    Dom.clear(box);
-    if (!poll) return;
-
-    const options = poll.options.map((opt) => {
-      const label = Dom.el("label", { class: "poll-option" });
-      const radio = Dom.el("input", {
-        type: "radio", name: "poll-vote", value: opt.id, class: "poll-option-radio",
-        disabled: poll.closed,
-      });
-      radio.checked = poll.voted_option_id === opt.id;
-      label.append(
-        radio,
-        Dom.el(
-          "span",
-          { class: "poll-option-body" },
-          Dom.el("span", { class: "poll-option-name", text: opt.label }),
-          Dom.el("span", { class: "poll-option-votes", text: `${opt.votes} phiếu` })
-        )
-      );
-
-      radio.addEventListener("change", async () => {
-        try {
-          const result = await api.post(`/polls/${poll.id}/vote`, { option_id: opt.id });
-          this.renderPoll(box, result.poll);
-          toasts.success("Đã bình chọn", opt.label);
-        } catch (err) {
-          toasts.error("Không bình chọn được", err.message);
-        }
-      });
-      return label;
-    });
-
-    box.appendChild(
-      Dom.el(
-        "div",
-        { class: "card" },
-        Dom.el("strong", { text: poll.question }),
-        poll.closed ? Dom.notice("info", null, "Bình chọn đã đóng.") : null,
-        Dom.el("div", { style: "margin-top:8px;" }, ...options)
-      )
     );
   }
 

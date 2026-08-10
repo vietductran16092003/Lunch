@@ -15,41 +15,20 @@ def build_ai_blueprint(services) -> Blueprint:
     def suggestions():
         return jsonify(ai.suggest_items(SessionUser.id(), request.args.get("date")))
 
-    @bp.post("/extract-menu")
-    @require_role(Role.ADMIN)
-    def extract_menu():
-        data = request.get_json(silent=True) or {}
-        return jsonify(ai.extract_menu_text(
-            data.get("text", ""), data.get("restaurant_id"), data.get("available_date")
-        ))
-
-    @bp.post("/extract-menu/save")
-    @require_role(Role.ADMIN)
-    def save_extracted_menu():
-        data = request.get_json(silent=True) or {}
-        return jsonify(ai.bulk_create_items(
-            data.get("items", []), data.get("restaurant_id"), data.get("available_date")
-        )), 201
-
     @bp.get("/summary")
-    @require_role(Role.COORDINATOR, Role.TREASURER, Role.ADMIN)
+    @require_role(Role.TREASURER, Role.ADMIN)
     def summary():
         return jsonify(ai.summarize_day(request.args.get("date")))
 
     @bp.get("/report")
-    @require_role(Role.COORDINATOR, Role.TREASURER, Role.ADMIN)
+    @require_role(Role.TREASURER, Role.ADMIN)
     def report():
         return jsonify(ai.range_report(
             request.args.get("start"), request.args.get("end")
         ))
 
-    @bp.get("/predict")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
-    def predict():
-        return jsonify(ai.predict_demand(request.args.get("date")))
-
     @bp.get("/reminders")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
+    @require_role(Role.ADMIN)
     def reminders():
         return jsonify(ai.pending_reminders(request.args.get("date")))
 

@@ -3,9 +3,7 @@ from .deadline_repository import DeadlineRepository
 from .fund_repository import FundRepository
 from .menu_repository import MenuRepository
 from .order_repository import OrderRepository
-from .poll_repository import PollRepository
 from .restaurant_repository import RestaurantRepository
-from .schedule_repository import ScheduleRepository
 from .user_repository import UserRepository
 
 __all__ = [
@@ -14,8 +12,6 @@ __all__ = [
     "FundRepository",
     "MenuRepository",
     "OrderRepository",
-    "PollRepository",
     "RestaurantRepository",
-    "ScheduleRepository",
     "UserRepository",
 ]

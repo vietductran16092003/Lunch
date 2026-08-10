@@ -12,9 +12,7 @@ from .repositories import (
     FundRepository,
     MenuRepository,
     OrderRepository,
-    PollRepository,
     RestaurantRepository,
-    ScheduleRepository,
     UserRepository,
 )
 from .services import (
@@ -26,10 +24,8 @@ from .services import (
     GrabService,
     MenuService,
     OrderService,
-    PollService,
     ReportService,
     RestaurantService,
-    ScheduleService,
     UploadService,
 )
 
@@ -47,16 +43,13 @@ class ServiceContainer:
         self.menu_items = MenuRepository(database)
         self.restaurant_repo = RestaurantRepository(database)
         self.order_repo = OrderRepository(database)
-        self.schedule_repo = ScheduleRepository(database)
         self.deadline_repo = DeadlineRepository(database)
         self.fund_repo = FundRepository(database)
-        self.poll_repo = PollRepository(database)
 
         # Tầng nghiệp vụ
         self.grab = GrabService(config)
         self.uploads = UploadService(config)
         self.auth = AuthService(self.users, config)
-        self.schedules = ScheduleService(self.schedule_repo, self.users)
         self.deadlines = DeadlineService(self.deadline_repo, config, event_broker=events)
         self.restaurants = RestaurantService(self.restaurant_repo, self.grab, events)
         self.menu = MenuService(
@@ -72,7 +65,6 @@ class ServiceContainer:
         self.fund = FundService(
             self.fund_repo, self.order_repo, self.users, events, config
         )
-        self.polls = PollService(self.poll_repo, events)
         self.ai = AiService(
             self.order_repo, self.menu_items, self.users, self.restaurant_repo,
             events, deadline_service=self.deadlines, config=config,

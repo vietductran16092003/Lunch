@@ -2,23 +2,15 @@
 
 Tách riêng khỏi OrderService/MenuService vì đây là nhóm tính năng "phụ trợ":
 gợi ý, tóm tắt, nhắc nhở, chatbot đều chỉ ĐỌC dữ liệu đã có và suy luận bằng
-luật đơn giản, không có tác dụng phụ nào ngoài extract_menu_text/bulk_create_items.
-Khi có API key thật, chỉ cần thay phần suy luận bên trong từng hàm, chữ ký hàm
-và route giữ nguyên.
+luật đơn giản. Khi có API key thật, chỉ cần thay phần suy luận bên trong từng
+hàm, chữ ký hàm và route giữ nguyên.
 """
 
-import re
 from datetime import date
 
 from ..config import Config
 from ..core.dates import Clock
 from ..core.errors import ValidationError
-from ..models import MenuItem
-
-_PRICE_LINE = re.compile(
-    r"^(?P<name>.+?)[\s]*[\-–—:]+[\s]*(?P<price>[\d][\d.,]*)\s*(?P<unit>k|nghìn|vnd|đ)?\.?$",
-    re.IGNORECASE,
-)
 
 
 class AiService:
@@ -80,81 +72,7 @@ class AiService:
             "based_on_orders": bool(counts),
         }
 
-    # ===== Trích xuất menu từ văn bản dán tay (mã 7.7) =====
-
-    def extract_menu_text(self, raw_text: str, restaurant_id, target_date=None) -> dict:
-        """Phân tích văn bản kiểu 'Tên món - Giá' mỗi dòng thành các món chờ xác nhận.
-
-        Không lưu ngay: trả về bản xem trước để admin duyệt qua bulk_create_items,
-        vì phân tích văn bản tự do luôn có khả năng đọc nhầm tên/giá.
-        """
-        if self.restaurants.find_by_id(restaurant_id) is None:
-            raise ValidationError("Nhà hàng không tồn tại")
-
-        target_date = Clock.date_or_today(target_date)
-        items = []
-        unparsed = []
-
-        for raw_line in (raw_text or "").splitlines():
-            line = raw_line.strip().strip("•-*").strip()
-            if not line:
-                continue
-            match = _PRICE_LINE.match(line)
-            if not match:
-                unparsed.append(raw_line)
-                continue
-
-            name = match.group("name").strip(" -–—:")
-            price_str = match.group("price").replace(".", "").replace(",", "")
-            unit = (match.group("unit") or "").lower()
-            try:
-                price = int(price_str)
-            except ValueError:
-                unparsed.append(raw_line)
-                continue
-            if unit in ("k", "nghìn"):
-                price *= 1000
-
-            if not name or price <= 0:
-                unparsed.append(raw_line)
-                continue
-
-            items.append({"name": name, "price": price})
-
-        return {
-            "restaurant_id": restaurant_id,
-            "available_date": target_date,
-            "items": items,
-            "unparsed_lines": unparsed,
-        }
-
-    def bulk_create_items(self, items: list, restaurant_id, target_date) -> dict:
-        if self.restaurants.find_by_id(restaurant_id) is None:
-            raise ValidationError("Nhà hàng không tồn tại")
-        if not items:
-            raise ValidationError("Không có món nào để lưu")
-
-        created_ids = []
-        for raw in items:
-            name = (raw.get("name") or "").strip()
-            price = raw.get("price")
-            if not name or not price or price <= 0:
-                continue
-            created_ids.append(self.menu.create(MenuItem(
-                name=name,
-                description="",
-                price=price,
-                available_date=target_date,
-                restaurant_id=restaurant_id,
-            )))
-
-        if created_ids:
-            self.events.publish("menu_updated", {
-                "date": target_date, "count": len(created_ids), "source": "ai_extract",
-            })
-        return {"created": len(created_ids), "ids": created_ids}
-
-    # ===== Tóm tắt đơn trong ngày (cho coordinator/treasurer) =====
+    # ===== Tóm tắt đơn trong ngày (cho treasurer/admin) =====
 
     def summarize_day(self, target_date=None) -> dict:
         target_date = Clock.date_or_today(target_date)
@@ -262,61 +180,6 @@ class AiService:
             "top_spenders": [{"name": n, "total": v} for n, v in top_spenders],
             "daily_totals": [{"date": d, "total": v} for d, v in sorted(daily_totals.items())],
             "report_text": " ".join(lines),
-        }
-
-    # ===== Dự đoán nhu cầu (Phase 5) =====
-
-    WEEKDAY_LABELS = (
-        "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ nhật",
-    )
-
-    def predict_demand(self, target_date=None, lookback_days: int = 60) -> dict:
-        """Ước lượng số đơn dự kiến dựa trên các ngày cùng thứ trong quá khứ.
-
-        Chỉ so cùng thứ trong tuần (ví dụ thứ Hai so với thứ Hai) vì thói quen ăn
-        uống lệch nhiều theo ngày trong tuần hơn là theo ngày trong tháng.
-        """
-        target_date = Clock.date_or_today(target_date)
-        target_weekday = date.fromisoformat(target_date).weekday()
-        weekday_label = self.WEEKDAY_LABELS[target_weekday]
-
-        order_counts = []
-        item_totals = {}
-        for i in range(1, lookback_days + 1):
-            day = Clock.add_days(target_date, -i)
-            if date.fromisoformat(day).weekday() != target_weekday:
-                continue
-            orders = self.orders.list_for_date(day)
-            if not orders:
-                continue
-            order_counts.append(len(orders))
-            for order in orders:
-                for item in order.items:
-                    item_totals[item.name] = item_totals.get(item.name, 0) + item.quantity
-
-        if not order_counts:
-            return {
-                "date": target_date, "weekday_label": weekday_label, "has_data": False,
-                "message": f"Chưa có dữ liệu {weekday_label} trước đó để dự đoán.",
-            }
-
-        sample_size = len(order_counts)
-        predicted_orders = round(sum(order_counts) / sample_size)
-        likely_items = sorted(item_totals.items(), key=lambda kv: -kv[1])[:5]
-
-        return {
-            "date": target_date,
-            "weekday_label": weekday_label,
-            "has_data": True,
-            "sample_size": sample_size,
-            "predicted_orders": predicted_orders,
-            "likely_items": [
-                {"name": n, "avg_quantity": round(c / sample_size, 1)} for n, c in likely_items
-            ],
-            "message": (
-                f"Dựa trên {sample_size} {weekday_label} gần đây, dự kiến khoảng "
-                f"{predicted_orders} đơn cho ngày {target_date}."
-            ),
         }
 
     # ===== Nhắc tự động: ai chưa đặt trước giờ chốt (mã 3.5x) =====

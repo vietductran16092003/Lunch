@@ -40,6 +40,10 @@ class FundService:
             raise ValidationError("Số tiền phải lớn hơn 0")
         return amount
 
+    def _announce(self, message: str):
+        """Báo cho mọi tài khoản đang mở app, dùng chung kênh thông báo broadcast."""
+        self.events.publish("announcement", {"message": message, "from": "Quỹ chung"})
+
     def topup(self, user_id, amount, note: str = "") -> dict:
         amount = self._validate_amount(amount)
         self.fund.record_transaction("topup", amount, user_id, (note or "").strip() or None,
@@ -49,6 +53,7 @@ class FundService:
         self.events.publish("fund_updated", {
             "type": "topup", "amount": amount, "balance": new_balance,
         })
+        self._announce(f"Quỹ chung vừa được nạp thêm {amount:,}đ.".replace(",", "."))
         return {"status": "topup", "amount": amount, "balance": new_balance}
 
     def withdraw(self, user_id, amount, note: str = "") -> dict:
@@ -65,6 +70,7 @@ class FundService:
         self.events.publish("fund_updated", {
             "type": "deduct", "amount": amount, "balance": new_balance,
         })
+        self._announce(f"Quỹ chung vừa rút {amount:,}đ.".replace(",", "."))
         return {"status": "deduct", "amount": amount, "balance": new_balance}
 
     # ===== Công nợ (5.6) =====

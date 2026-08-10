@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=22">
+  <link rel="stylesheet" href="assets/css/style.css?v=23">
 </head>
 <body data-page="admin">
   <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
@@ -42,34 +42,6 @@
     <div id="restaurant-preview"></div>
 
     <div id="restaurant-list" style="margin-top:16px;"></div>
-
-    <!-- Trích xuất menu từ văn bản dán tay (Phase 3, mã 7.7) -->
-    <div class="section-head">
-      <h2>Trích xuất menu từ văn bản</h2>
-      <p>Dán danh sách "Tên món - Giá" (mỗi dòng một món), xem trước rồi lưu hàng loạt.</p>
-    </div>
-
-    <form id="extract-menu-form" novalidate>
-      <div class="field">
-        <label for="extract-restaurant">Nhà hàng<span class="required-mark" aria-hidden="true">*</span></label>
-        <select id="extract-restaurant" name="extract-restaurant" required>
-          <option value="">— Chọn nhà hàng —</option>
-        </select>
-      </div>
-      <div class="field field-sm">
-        <label for="extract-date">Ngày áp dụng<span class="required-mark" aria-hidden="true">*</span></label>
-        <input type="date" id="extract-date" name="extract-date" required>
-      </div>
-      <div class="field field-lg">
-        <label for="extract-text">Văn bản menu</label>
-        <textarea id="extract-text" name="extract-text" rows="6"
-                  placeholder="Cơm gà xối mỡ - 35000&#10;Bún bò Huế - 30k&#10;Trà đá - 5.000đ"></textarea>
-      </div>
-      <button type="button" id="extract-preview-btn">Xem trước</button>
-      <p id="extract-message" role="status" aria-live="polite" style="margin:0;"></p>
-    </form>
-
-    <div id="extract-preview-box"></div>
 
     <!-- Bước 2 — Thực đơn, khóa cho đến khi chọn được nhà hàng -->
     <div class="section-head">
@@ -137,28 +109,85 @@
       <p>Tổng hợp để đặt trên Grab và chi tiết từng nhân viên để tính tiền, gộp chung một chỗ.</p>
     </div>
 
-    <!-- Chuyển ngày để xem cả đơn nhân viên đặt trước cho hôm sau -->
-    <div class="date-picker" id="admin-date-picker" role="group" aria-label="Chọn ngày xem đơn" hidden></div>
+    <div class="framed-panel">
+      <!-- Chuyển ngày để xem cả đơn nhân viên đặt trước cho hôm sau -->
+      <div class="date-picker" id="admin-date-picker" role="group" aria-label="Chọn ngày xem đơn" hidden></div>
 
-    <div class="stat-row" id="dashboard-stats"></div>
+      <div class="stat-row" id="dashboard-stats"></div>
 
-    <div class="summary-bar">
-      <div class="totals">
-        <span class="stat-value" id="dashboard-total">0 đ</span>
-        <span class="stat-label">Tổng tiền cả nhóm</span>
+      <div class="summary-bar">
+        <div class="totals">
+          <span class="stat-value" id="dashboard-total">0 đ</span>
+          <span class="stat-label">Tổng tiền cả nhóm</span>
+        </div>
+        <div class="actions">
+          <a class="link-action" id="export-link" href="#" download>⬇ Tải CSV</a>
+          <button type="button" class="ghost" id="dashboard-refresh-btn">Làm mới</button>
+          <button type="button" class="primary-lg" id="lock-orders-btn">Chốt đơn &amp; đặt trên Grab</button>
+        </div>
       </div>
-      <div class="actions">
-        <a class="link-action" id="export-link" href="#" download>⬇ Tải CSV</a>
-        <button type="button" class="ghost" id="dashboard-refresh-btn">Làm mới</button>
-        <button type="button" class="primary-lg" id="lock-orders-btn">Chốt đơn &amp; đặt trên Grab</button>
+
+      <p id="lock-orders-message" role="status" aria-live="polite"></p>
+
+      <div id="dashboard-box" aria-busy="true">
+        <div class="skeleton" style="min-height:180px;"></div>
       </div>
     </div>
 
-    <p id="lock-orders-message" role="status" aria-live="polite"></p>
-
-    <div id="dashboard-box" aria-busy="true">
-      <div class="skeleton" style="min-height:180px;"></div>
+    <!-- Gom lại từ trang Gom đơn cũ: tóm tắt, ai chưa đặt, tổng hợp quán, chia ship -->
+    <div class="section-head">
+      <h2>Tóm tắt nhanh</h2>
+      <p>Số đơn, món và quán được đặt nhiều nhất trong ngày.</p>
     </div>
+    <div id="ai-summary-box" class="card"></div>
+
+    <div class="section-head">
+      <h2>Ai chưa đặt món</h2>
+      <p>Danh sách nhắc trước giờ chốt đơn.</p>
+    </div>
+    <div id="ai-reminders-box" class="card"></div>
+
+    <div class="section-head">
+      <h2>Tổng hợp theo quán</h2>
+      <p>Kèm ghi chú của nhân viên để dặn quán, và số lượng để đặt cho đúng.</p>
+    </div>
+
+    <div id="grouped-box" aria-busy="true">
+      <div class="skeleton" style="min-height:160px;"></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Chia phí ship</h2>
+      <p>Chia đều cho các đơn đã chốt trong ngày. Số lẻ dồn vào đơn đầu tiên.</p>
+    </div>
+
+    <form id="shipping-split-form" novalidate>
+      <div class="field field-sm">
+        <label for="shipping-total-fee">Tổng phí ship (đ)<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="number" id="shipping-total-fee" name="shipping-total-fee" min="1" step="1000"
+               inputmode="numeric" required aria-describedby="shipping-fee-error">
+        <span class="field-error" id="shipping-fee-error" role="alert"></span>
+      </div>
+      <button type="submit">Chia đều cho đơn đã chốt</button>
+      <p id="shipping-split-message" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
+
+    <div id="shipping-result"></div>
+
+    <div class="section-head">
+      <h2>Gửi thông báo</h2>
+      <p>Hiện ngay dưới dạng thông báo nổi cho mọi người đang mở app.</p>
+    </div>
+
+    <form id="broadcast-form" novalidate>
+      <div class="field field-lg">
+        <label for="broadcast-message">Nội dung</label>
+        <input type="text" id="broadcast-message" name="broadcast-message"
+               placeholder="Ví dụ: Quán hôm nay giao trễ 15 phút" maxlength="300">
+      </div>
+      <button type="submit">Gửi thông báo</button>
+      <p id="broadcast-message-status" role="status" aria-live="polite" style="margin:0;"></p>
+    </form>
 
     <!-- Thông tin thanh toán: cấu hình phụ, đặt cuối trang -->
     <div class="section-head">
@@ -187,6 +216,6 @@
       <p id="payment-info-message" role="status" aria-live="polite" style="margin:0;"></p>
     </form>
   </main>
-  <script type="module" src="js/main.js?v=22"></script>
+  <script type="module" src="js/main.js?v=23"></script>
 </body>
 </html>

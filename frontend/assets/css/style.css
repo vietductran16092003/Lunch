@@ -305,7 +305,8 @@ h3 { font-size: 15px; margin: 0 0 var(--space-2); font-weight: 600; }
 }
 
 /* ===== Thanh tiến trình đơn hàng (stepper) ===== */
-.stepper-title {
+.stepper-title,
+.section-title {
   font-size: 15px;
   font-weight: 600;
   margin: var(--space-4) 0 var(--space-2);
@@ -772,6 +773,15 @@ a.link-action:hover { text-decoration: underline; }
   padding: var(--space-4);
   margin-bottom: var(--space-3);
   font-size: 14px;
+}
+
+/* Khung bao quanh Bảng điều khiển đơn hôm nay, tách rõ khỏi các mục khác */
+.framed-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  background: var(--bg-sunken);
+  margin-bottom: var(--space-4);
 }
 
 .card + .card { margin-top: var(--space-2); }
@@ -1400,48 +1410,8 @@ tr.is-dirty td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
 }
 
 .role-tag.is-admin       { background: var(--critical-soft); color: var(--critical); border-color: #F2C9C3; }
-.role-tag.is-coordinator { background: var(--accent-wash);   color: var(--accent-strong); border-color: var(--accent-soft); }
 .role-tag.is-treasurer   { background: var(--success-soft);  color: var(--success); border-color: #BFE0CC; }
 .role-tag.is-employee    { background: var(--info-soft);     color: var(--info); border-color: #BFDCEB; }
-
-/* ===== Lịch tua coordinator (1.6) ===== */
-.schedule-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-3);
-}
-
-.schedule-day {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.schedule-day.is-today {
-  border-color: var(--accent-strong);
-  box-shadow: inset 0 0 0 1px var(--accent-strong);
-  background: var(--accent-wash);
-}
-
-.schedule-day.is-weekend { background: var(--bg-sunken); }
-
-.schedule-day .day-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.schedule-day .day-name { font-weight: 600; font-size: 14px; }
-.schedule-day .day-date { font-size: 12.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.schedule-day .day-today-flag { font-size: 11px; font-weight: 700; color: var(--accent-strong); }
-.schedule-day select { font-size: 14px; }
-
-.schedule-day .day-unassigned { font-size: 12.5px; color: var(--warning); font-weight: 500; }
 
 /* ===== Deadline chốt đơn (4.1) ===== */
 .deadline-panel {

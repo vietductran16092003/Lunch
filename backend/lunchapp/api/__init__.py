@@ -5,7 +5,6 @@ from .coordinator_routes import build_coordinator_blueprint
 from .fund_routes import build_fund_blueprint
 from .menu_routes import build_menu_blueprint
 from .order_routes import build_order_blueprint
-from .poll_routes import build_poll_blueprint
 from .role_routes import build_role_blueprint
 from .system_routes import build_system_blueprint
 
@@ -17,7 +16,6 @@ __all__ = [
     "build_fund_blueprint",
     "build_menu_blueprint",
     "build_order_blueprint",
-    "build_poll_blueprint",
     "build_role_blueprint",
     "build_system_blueprint",
 ]

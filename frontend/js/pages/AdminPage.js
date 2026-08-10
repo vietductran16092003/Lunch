@@ -1,6 +1,6 @@
 import { DashboardView } from "../components/DashboardView.js";
 import { DatePicker } from "../components/DatePicker.js";
-import { MenuExtractForm } from "../components/MenuExtractForm.js";
+import { GroupedOrdersView } from "../components/GroupedOrdersView.js";
 import { MenuForm } from "../components/MenuForm.js";
 import { PaymentInfoForm } from "../components/PaymentInfoForm.js";
 import { RestaurantManager } from "../components/RestaurantManager.js";
@@ -10,7 +10,9 @@ import { Formatter } from "../core/Formatter.js";
 import { toasts } from "../core/ToastManager.js";
 import { BasePage } from "./BasePage.js";
 
-/** Trang đặt hàng của người đứng ra đặt. */
+/** Trang đặt hàng của người đứng ra đặt — cũng gộp luôn phần gom đơn (tóm tắt,
+ * ai chưa đặt, tổng hợp theo quán, chia ship, thông báo) sau khi bỏ vai trò
+ * điều phối viên riêng. */
 export class AdminPage extends BasePage {
   constructor() {
     super();
@@ -19,23 +21,24 @@ export class AdminPage extends BasePage {
 
     this.dashboard = new DashboardView({ onConfirmPayment: () => this.loadDashboard() });
     this.menuForm = new MenuForm({ onCreated: () => this.loadDashboard() });
-    this.extractForm = new MenuExtractForm({ onSaved: () => this.loadDashboard() });
     this.restaurants = new RestaurantManager({
-      onChange: (list) => {
-        this.menuForm.updateAvailability(list.length > 0);
-        this.extractForm.updateRestaurants(list);
-      },
+      onChange: (list) => this.menuForm.updateAvailability(list.length > 0),
     });
     this.datePicker = new DatePicker("admin-date-picker", (date) => this.switchDate(date));
     this.paymentInfo = new PaymentInfoForm();
+    this.grouped = new GroupedOrdersView();
   }
 
   async init() {
     Dom.byId("lock-orders-btn").addEventListener("click", () => this.lockOrders());
     Dom.byId("dashboard-refresh-btn").addEventListener("click", (e) => this.refresh(e));
+    Dom.byId("shipping-split-form").addEventListener("submit", (e) => this.splitShipping(e));
+    Dom.byId("broadcast-form").addEventListener("submit", (e) => this.sendBroadcast(e));
 
     await this.restaurants.load();
-    await this.loadDashboard();
+    await Promise.all([
+      this.loadDashboard(), this.loadSummary(), this.loadReminders(), this.loadGrouped(),
+    ]);
 
     this.listen({
       order_placed: (data) => {
@@ -46,6 +49,9 @@ export class AdminPage extends BasePage {
           `${data.employee_name} · ${data.item_count} món${when}`
         );
         this.loadDashboard();
+        this.loadSummary();
+        this.loadReminders();
+        this.loadGrouped();
       },
       payment_declared: (data) => {
         toasts.warning(
@@ -55,8 +61,24 @@ export class AdminPage extends BasePage {
         this.loadDashboard();
       },
       payment_confirmed: () => this.loadDashboard(),
-      order_cancelled: () => this.loadDashboard(),
-      order_updated: () => this.loadDashboard(),
+      order_cancelled: () => {
+        this.loadDashboard();
+        this.loadSummary();
+        this.loadReminders();
+        this.loadGrouped();
+      },
+      order_updated: () => {
+        this.loadDashboard();
+        this.loadSummary();
+        this.loadGrouped();
+      },
+      orders_locked: () => {
+        this.loadGrouped();
+        this.loadReminders();
+      },
+      shipping_split: (data) => {
+        if (data.date === this.date) this.loadGrouped();
+      },
     });
   }
 
@@ -100,7 +122,9 @@ export class AdminPage extends BasePage {
   async switchDate(date) {
     if (!date || date === this.date) return;
     this.date = date;
-    await this.loadDashboard();
+    await Promise.all([
+      this.loadDashboard(), this.loadSummary(), this.loadReminders(), this.loadGrouped(),
+    ]);
   }
 
   async refresh(event) {
@@ -154,6 +178,170 @@ export class AdminPage extends BasePage {
       message.className = "message-error";
       message.textContent = err.message;
       toasts.error("Chốt đơn thất bại", err.message);
+    } finally {
+      Dom.setBusy(button, false);
+    }
+  }
+
+  // ===== Tóm tắt nhanh + ai chưa đặt (gộp từ trang Gom đơn cũ) =====
+
+  async loadSummary() {
+    const box = Dom.byId("ai-summary-box");
+    if (!box) return;
+    try {
+      const query = this.date ? `?date=${encodeURIComponent(this.date)}` : "";
+      const data = await api.get(`/ai/summary${query}`);
+      Dom.clear(box);
+      box.appendChild(Dom.el("p", { style: "margin:0;", text: data.summary_text }));
+    } catch (err) {
+      Dom.clear(box).appendChild(Dom.emptyState("⚠️", "Không tải được tóm tắt."));
+    }
+  }
+
+  async loadReminders() {
+    const box = Dom.byId("ai-reminders-box");
+    if (!box) return;
+    try {
+      const query = this.date ? `?date=${encodeURIComponent(this.date)}` : "";
+      const data = await api.get(`/ai/reminders${query}`);
+      Dom.clear(box);
+
+      if (data.closed) {
+        box.appendChild(Dom.el("p", { style: "margin:0;", text: "Đã quá giờ chốt đơn." }));
+        return;
+      }
+      if (data.note) {
+        box.appendChild(Dom.el("p", { style: "margin:0;", text: data.note }));
+        return;
+      }
+      if (!data.pending_users.length) {
+        box.appendChild(Dom.el("p", { style: "margin:0;", text: "Mọi người đã đặt món." }));
+        return;
+      }
+
+      box.append(
+        Dom.el("p", {
+          style: "margin:0 0 8px;",
+          text: `${data.pending_count} người chưa đặt (giờ chốt ${data.cutoff}):`,
+        }),
+        Dom.el(
+          "ul",
+          { style: "margin:0; padding-left:18px;" },
+          ...data.pending_users.map((u) => Dom.el("li", { text: `${u.name} (${u.email})` }))
+        )
+      );
+    } catch (err) {
+      Dom.clear(box).appendChild(Dom.emptyState("⚠️", "Không tải được danh sách nhắc."));
+    }
+  }
+
+  // ===== Tổng hợp theo quán + chia phí ship (gộp từ trang Gom đơn cũ) =====
+
+  async loadGrouped() {
+    try {
+      const query = this.date ? `?date=${encodeURIComponent(this.date)}` : "";
+      const data = await api.get(`/coordinator/grouped${query}`);
+      this.grouped.render(data);
+    } catch (err) {
+      this.grouped.showError(err.message);
+    }
+  }
+
+  async splitShipping(event) {
+    event.preventDefault();
+    const feeInput = Dom.byId("shipping-total-fee");
+    const message = Dom.byId("shipping-split-message");
+    const button = event.target.querySelector("button[type='submit']");
+
+    feeInput.removeAttribute("aria-invalid");
+    const fee = parseInt(feeInput.value, 10);
+    if (!fee || fee <= 0) {
+      feeInput.setAttribute("aria-invalid", "true");
+      Dom.setText("shipping-fee-error", "Vui lòng nhập số tiền lớn hơn 0");
+      feeInput.focus();
+      return;
+    }
+    Dom.setText("shipping-fee-error", "");
+
+    if (!window.confirm(
+      `Chia ${Formatter.money(fee)} tiền ship cho các đơn đã chốt ngày ${this.date}?`
+    )) {
+      return;
+    }
+
+    Dom.setBusy(button, true, "Đang chia phí ship");
+    try {
+      const result = await api.post("/coordinator/split-shipping", {
+        date: this.date, total_fee: fee,
+      });
+
+      message.className = "message-success";
+      message.textContent =
+        `Đã chia cho ${result.order_count} đơn, mỗi đơn ${Formatter.money(result.per_order)}.`;
+      toasts.success("Đã chia phí ship", message.textContent);
+
+      this.renderShippingResult(result);
+      feeInput.value = "";
+      await this.loadGrouped();
+    } catch (err) {
+      message.className = "message-error";
+      message.textContent = err.message;
+      toasts.error("Chia phí ship thất bại", err.message);
+    } finally {
+      Dom.setBusy(button, false);
+    }
+  }
+
+  renderShippingResult(result) {
+    const box = Dom.byId("shipping-result");
+    Dom.clear(box);
+
+    const tbody = Dom.el("tbody");
+    (result.orders || []).forEach((o) => {
+      tbody.appendChild(
+        Dom.el(
+          "tr",
+          {},
+          Dom.el("td", { text: o.user_name }),
+          Dom.el("td", { class: "num mono", text: Formatter.money(o.shipping_share) })
+        )
+      );
+    });
+
+    const table = Dom.el("table", {
+      html:
+        "<caption>Phần ship từng người vừa được cộng thêm</caption>" +
+        "<thead><tr><th scope='col'>Nhân viên</th><th scope='col' class='num'>Tiền ship</th></tr></thead>",
+    });
+    table.appendChild(tbody);
+    box.appendChild(Dom.el("div", { class: "table-wrap" }, table));
+  }
+
+  // ===== Gửi thông báo (gộp từ trang Gom đơn cũ) =====
+
+  async sendBroadcast(event) {
+    event.preventDefault();
+    const input = Dom.byId("broadcast-message");
+    const message = Dom.byId("broadcast-message-status");
+    const button = event.target.querySelector("button[type='submit']");
+
+    if (!input.value.trim()) {
+      message.className = "message-error";
+      message.textContent = "Vui lòng nhập nội dung";
+      return;
+    }
+
+    Dom.setBusy(button, true, "Đang gửi");
+    try {
+      await api.post("/coordinator/broadcast", { message: input.value.trim() });
+      message.className = "message-success";
+      message.textContent = "Đã gửi thông báo";
+      toasts.success("Đã gửi thông báo");
+      input.value = "";
+    } catch (err) {
+      message.className = "message-error";
+      message.textContent = err.message;
+      toasts.error("Gửi thất bại", err.message);
     } finally {
       Dom.setBusy(button, false);
     }

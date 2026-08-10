@@ -1,8 +1,5 @@
-"""Endpoint dành cho người điều phối (coordinator).
-
-File này có thể được nhiều mã song song nối thêm route (xem mã 4.2 gộp theo
-quán) — giữ cấu trúc `build_coordinator_blueprint(services)` đơn giản để dễ nối.
-"""
+"""Endpoint gộp đơn/chia ship/thông báo — nay chỉ admin dùng, sau khi bỏ vai
+trò điều phối viên riêng (gộp thẳng vào trang Đặt hàng của admin)."""
 
 from flask import Blueprint, jsonify, request
 
@@ -16,16 +13,16 @@ def build_coordinator_blueprint(services) -> Blueprint:
     # ===== Gộp đơn theo quán (mã 4.2) =====
 
     @bp.get("/grouped")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
+    @require_role(Role.ADMIN)
     def grouped():
         """Tổng số lượng từng món theo từng quán của một ngày, kèm ghi chú (mã 3.5)
-        để coordinator tiện copy tay vào Grab."""
+        để tiện copy tay vào Grab."""
         return jsonify(services.orders.grouped_by_restaurant(request.args.get("date")))
 
     # ===== Chia phí ship (mã 4.3) =====
 
     @bp.post("/split-shipping")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
+    @require_role(Role.ADMIN)
     def split_shipping():
         data = request.get_json(silent=True) or {}
         return jsonify(
@@ -34,27 +31,17 @@ def build_coordinator_blueprint(services) -> Blueprint:
             )
         )
 
-    # ===== Đặt hộ nhân viên (Phase 4) =====
+    # ===== Danh bạ nhân viên (dùng cho form góp quỹ) =====
 
     @bp.get("/employees")
-    @require_role(Role.COORDINATOR, Role.TREASURER, Role.ADMIN)
+    @require_role(Role.TREASURER, Role.ADMIN)
     def employees():
-        """Danh bạ rút gọn để chọn người đặt hộ."""
         return jsonify({"users": services.auth.list_users()})
-
-    @bp.post("/orders-for/<int:user_id>")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
-    def place_order_for(user_id):
-        data = request.get_json(silent=True) or {}
-        result = services.orders.place_order(
-            user_id, data.get("items", []), data.get("order_date")
-        )
-        return jsonify(result), 201
 
     # ===== Thông báo chung (Phase 4) =====
 
     @bp.post("/broadcast")
-    @require_role(Role.COORDINATOR, Role.ADMIN)
+    @require_role(Role.ADMIN)
     def broadcast():
         data = request.get_json(silent=True) or {}
         message = (data.get("message") or "").strip()
