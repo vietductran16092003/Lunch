@@ -37,8 +37,8 @@ export class HistoryPage extends BasePage {
       this.list.render(this.history, todayKeys);
 
       const toolbar = Dom.byId("history-toolbar");
-      const hasPending = this.list.pendingIds(this.history).length > 0;
-      toolbar.hidden = !hasPending;
+      const hasDeletable = this.list.deletableIds(this.history).length > 0;
+      toolbar.hidden = !hasDeletable;
       Dom.byId("history-select-all").checked = false;
       this.updateToolbar(new Set());
     } catch (err) {
@@ -53,20 +53,20 @@ export class HistoryPage extends BasePage {
   }
 
   toggleSelectAll(event) {
-    const ids = event.target.checked ? this.list.pendingIds(this.history) : [];
+    const ids = event.target.checked ? this.list.deletableIds(this.history) : [];
     this.list.setSelected(ids);
   }
 
   async deleteSelected() {
     const ids = [...this.list.selected];
     if (!ids.length) return;
-    if (!window.confirm(`Xoá ${ids.length} đơn đang chờ đã chọn? Không thể hoàn tác.`)) return;
+    if (!window.confirm(`Xoá ${ids.length} đơn đã hoàn tất đã chọn? Không thể hoàn tác.`)) return;
 
     const button = Dom.byId("history-delete-selected");
     Dom.setBusy(button, true, "Đang xoá");
     try {
       await Promise.all(ids.map((id) => api.delete(`/orders/${id}`)));
-      toasts.success("Đã xoá đơn", `${ids.length} đơn đang chờ`);
+      toasts.success("Đã xoá đơn", `${ids.length} đơn đã hoàn tất`);
       await this.load();
     } catch (err) {
       toasts.error("Xoá không thành công", err.message);

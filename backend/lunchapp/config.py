@@ -5,7 +5,7 @@ trường triển khai) chỉ việc gán lại trên Config.
 """
 
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,9 +23,9 @@ class Config:
     DEBUG = True
 
     # ===== Giờ chốt đơn =====
-    # Đặt LUNCH_CUTOFF="HH:MM" để đổi mà không phải sửa code.
-    ORDER_CUTOFF_HOUR = 10
-    ORDER_CUTOFF_MINUTE = 30
+    # Cố định 11:00 hằng ngày — không còn chỉnh theo từng ngày qua giao diện nữa.
+    ORDER_CUTOFF_HOUR = 11
+    ORDER_CUTOFF_MINUTE = 0
 
     # ===== Tài khoản =====
     ALLOWED_EMAIL_DOMAINS = tuple(
@@ -42,7 +42,9 @@ class Config:
     MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 
     # ===== Tích hợp Grab =====
-    GRAB_FETCH_ENABLED = os.environ.get("GRAB_FETCH_ENABLED") == "1"
+    # Bật sẵn theo mặc định để giao diện tự lấy đánh giá/địa chỉ khi dán URL.
+    # Đặt GRAB_FETCH_ENABLED=0 để tắt, chỉ tách tên quán từ URL như trước.
+    GRAB_FETCH_ENABLED = os.environ.get("GRAB_FETCH_ENABLED", "1") != "0"
     GRAB_FETCH_TIMEOUT = 6
 
     # ----- Giờ chốt -----
@@ -79,6 +81,13 @@ class Config:
         if target_date < today:
             return True
         return cls.cutoff_passed_today()
+
+    @classmethod
+    def current_order_date(cls) -> str:
+        """Ngày của vòng đặt đang mở: hôm nay nếu chưa quá giờ chốt, quá rồi
+        thì là ngày kế tiếp — khớp với "default_date" bên MenuService.available_dates."""
+        today = date.today().isoformat()
+        return today if not cls.cutoff_passed_for(today) else (date.today() + timedelta(days=1)).isoformat()
 
     # ----- Tài khoản -----
 

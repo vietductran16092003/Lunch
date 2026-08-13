@@ -28,4 +28,10 @@ def build_role_blueprint(services) -> Blueprint:
     def delete_user(user_id):
         return jsonify(services.auth.delete_user(user_id, actor_id=SessionUser.id()))
 
+    @bp.post("/users/<int:user_id>/reset-password")
+    @require_role(Role.ADMIN)
+    def reset_password(user_id):
+        """Admin sinh mật khẩu tạm cho người khác — cũng là hành động duyệt yêu cầu quên mật khẩu."""
+        return jsonify(services.auth.admin_reset_password(user_id))
+
     return bp

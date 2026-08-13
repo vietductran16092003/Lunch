@@ -108,3 +108,7 @@ class MenuRepository(BaseRepository):
 
     def delete(self, item_id):
         self._execute("DELETE FROM menu_items WHERE id = ?", (item_id,))
+
+    def delete_for_date(self, target_date: str):
+        """Xoá mọi món của một ngày — dùng khi gỡ bỏ hẳn ngày đó (OrderService.clear_date)."""
+        self._execute("DELETE FROM menu_items WHERE available_date = ?", (target_date,))

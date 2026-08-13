@@ -80,7 +80,10 @@ export class RoleMatrix {
         {},
         Dom.el("div", { style: "font-weight:600;", text: user.name }),
         Dom.el("div", { class: "subtitle", style: "margin:0; font-size:12.5px;", text: user.email }),
-        isSelf ? Dom.el("div", { class: "role-tag", text: "Chính bạn" }) : null
+        isSelf ? Dom.el("div", { class: "role-tag", text: "Chính bạn" }) : null,
+        user.password_reset_pending
+          ? Dom.el("div", { class: "badge pending", style: "margin-top:4px;", text: "Chờ duyệt quên mật khẩu" })
+          : null
       )
     );
 
@@ -107,11 +110,51 @@ export class RoleMatrix {
     });
     remove.addEventListener("click", () => this.remove(user, remove));
 
+    const resetPassword = Dom.el("button", {
+      type: "button",
+      class: user.password_reset_pending ? "primary-lg" : "ghost",
+      text: user.password_reset_pending ? "Duyệt yêu cầu" : "Đặt lại mật khẩu",
+      "aria-label": `${user.password_reset_pending ? "Duyệt yêu cầu đặt lại" : "Đặt lại"} mật khẩu cho ${user.name}`,
+    });
+    resetPassword.addEventListener("click", () => this.resetPassword(user, resetPassword));
+
     row.appendChild(
-      Dom.el("td", { style: "display:flex; gap:6px; flex-wrap:wrap;" }, save, remove)
+      Dom.el(
+        "td",
+        { style: "display:flex; gap:8px; flex-wrap:wrap;" },
+        save, resetPassword, remove
+      )
     );
 
     return row;
+  }
+
+  async resetPassword(user, button) {
+    const confirmMessage = user.password_reset_pending
+      ? `Duyệt yêu cầu quên mật khẩu của "${user.name}" (${user.email})? Hệ thống sẽ sinh mật khẩu tạm để bạn báo lại.`
+      : `Đặt lại mật khẩu cho "${user.name}" (${user.email})? Mật khẩu cũ sẽ không dùng được nữa.`;
+    if (!window.confirm(confirmMessage)) return;
+
+    Dom.setBusy(button, true, `Đang đặt lại mật khẩu cho ${user.name}`);
+    try {
+      const result = await api.post(`/admin/users/${user.id}/reset-password`, {});
+      Dom.setBusy(button, false);
+      user.password_reset_pending = false;
+      this.render();
+      toasts.success("Đã đặt lại mật khẩu", `Báo mật khẩu tạm cho ${user.name} qua kênh khác (Zalo, gặp trực tiếp…)`);
+      try {
+        await navigator.clipboard.writeText(result.temp_password);
+      } catch (err) {
+        // Trình duyệt không cho copy tự động thì vẫn hiện trong ô prompt để tự copy
+      }
+      window.prompt(
+        `Mật khẩu tạm cho ${user.name} (đã copy vào clipboard nếu trình duyệt hỗ trợ):`,
+        result.temp_password
+      );
+    } catch (err) {
+      Dom.setBusy(button, false);
+      toasts.error("Không đặt lại được mật khẩu", err.message);
+    }
   }
 
   async remove(user, button) {

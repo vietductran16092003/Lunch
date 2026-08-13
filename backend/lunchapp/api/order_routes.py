@@ -55,4 +55,12 @@ def build_order_blueprint(services) -> Blueprint:
     def history():
         return jsonify(orders.history(SessionUser.id()))
 
+    @bp.get("/round-status")
+    @require_login
+    def round_status():
+        """Ngày này đã có người nhận chưa, và vòng đặt còn dở dang hay không —
+        frontend dùng để chặn người khác bấm vào "Đặt hàng chung" khi đang có
+        đơn chưa hoàn tất."""
+        return jsonify(orders.round_status(request.args.get("date")))
+
     return bp

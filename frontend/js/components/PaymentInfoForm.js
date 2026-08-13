@@ -22,25 +22,34 @@ export class PaymentInfoForm {
 
   async load() {
     try {
-      const data = await api.get("/payment-info");
+      const data = await api.get("/admin/payment-info");
+      this.name = data.name || null;
       Dom.byId("admin-phone").value = data.phone || "";
       this.qr.setUrl(data.qr_image_url || null);
+      this.renderPreview(this.name, data.phone);
     } catch (err) {
       this.qr.setUrl(null);
     }
+  }
+
+  renderPreview(name, phone) {
+    Dom.setText("payment-preview-name", name || "—");
+    Dom.setText("payment-preview-phone", phone ? `SĐT/Zalo: ${phone}` : "Chưa có số liên hệ.");
   }
 
   async submit(event) {
     event.preventDefault();
     const message = Dom.byId("payment-info-message");
     const button = this.form.querySelector("button[type='submit']");
+    const phone = Dom.byId("admin-phone").value.trim();
 
     Dom.setBusy(button, true, "Đang lưu");
     try {
       await api.put("/admin/payment-info", {
-        phone: Dom.byId("admin-phone").value.trim(),
+        phone,
         qr_image_url: this.qr.url || "",
       });
+      this.renderPreview(this.name, phone);
       message.className = "message-success";
       message.textContent = "Đã lưu thông tin thanh toán";
       toasts.success("Đã lưu thông tin nhận tiền");

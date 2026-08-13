@@ -2,7 +2,7 @@ import { DatePicker } from "../components/DatePicker.js";
 import { MenuGrid } from "../components/MenuGrid.js";
 import { OrderStepper } from "../components/OrderStepper.js";
 import { PaymentModal } from "../components/PaymentModal.js";
-import { api } from "../core/ApiClient.js";
+import { ApiClient, api } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
 import { Formatter } from "../core/Formatter.js";
 import { toasts } from "../core/ToastManager.js";
@@ -16,7 +16,7 @@ export class MenuPage extends BasePage {
     this.today = null;
     this.availableDates = [];
     this.order = null;
-    this.cutoffLabel = "10:30";
+    this.cutoffLabel = "11:00";
     this.cutoffPassed = false;
 
     this.stepper = new OrderStepper();
@@ -81,27 +81,40 @@ export class MenuPage extends BasePage {
       Dom.clear(box);
       if (!data.suggestions || !data.suggestions.length) return;
 
-      const chips = data.suggestions.map((item) => {
-        const chip = Dom.el(
+      const cards = data.suggestions.map((item) => {
+        const card = Dom.el(
           "button",
-          { type: "button", class: "chip", text: `+ ${item.name}` }
+          { type: "button", class: "suggestion-card", "aria-label": `Thêm ${item.name}` },
+          item.image_url
+            ? Dom.el("img", {
+                class: "suggestion-thumb",
+                src: ApiClient.assetUrl(item.image_url),
+                alt: "",
+                loading: "lazy",
+              })
+            : Dom.el("div", { class: "suggestion-thumb is-placeholder", "aria-hidden": "true", text: "🍽️" }),
+          Dom.el(
+            "div",
+            { class: "suggestion-info" },
+            Dom.el("span", { class: "suggestion-name", text: item.name }),
+            Dom.el("span", { class: "suggestion-meta", text: `${Formatter.money(item.price)} · đã đặt ${item.order_count} lần` })
+          ),
+          Dom.el("span", { class: "suggestion-add", "aria-hidden": "true", text: "+" })
         );
-        chip.addEventListener("click", () => {
-          const input = Dom.byId(`qty-${item.menu_item_id}`);
-          if (!input) return;
-          input.value = String((parseInt(input.value, 10) || 0) + 1);
-          input.dispatchEvent(new Event("input"));
-          input.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.addEventListener("click", () => {
+          this.grid.addQuantity(item.id, 1);
+          const input = Dom.byId(`qty-${item.id}`);
+          if (input) input.scrollIntoView({ behavior: "smooth", block: "center" });
         });
-        return chip;
+        return card;
       });
 
       box.appendChild(
         Dom.el(
           "div",
-          { class: "suggestions-row" },
-          Dom.el("span", { class: "subtitle", text: "Gợi ý cho bạn:" }),
-          ...chips
+          { class: "suggestions-panel" },
+          Dom.el("span", { class: "section-title", text: "🍀 Gợi ý cho bạn" }),
+          Dom.el("div", { class: "suggestions-row" }, ...cards)
         )
       );
     } catch (err) {
@@ -111,6 +124,7 @@ export class MenuPage extends BasePage {
 
   // ===== Tải dữ liệu =====
 
+  /** Danh sách ngày có thực đơn + ngày mặc định để chọn (hôm nay, hoặc mai nếu đã quá giờ chốt). */
   async loadDates() {
     try {
       const data = await api.get("/menu/dates");
@@ -126,6 +140,7 @@ export class MenuPage extends BasePage {
     this.datePicker.render(this.availableDates, this.selectedDate, this.today);
   }
 
+  /** Tải danh sách món của this.selectedDate và vẽ lại toàn bộ tiêu đề/lưới món. */
   async loadMenu() {
     try {
       const query = this.selectedDate ? `?date=${encodeURIComponent(this.selectedDate)}` : "";
@@ -153,11 +168,36 @@ export class MenuPage extends BasePage {
       this.renderCutoffNotice();
       this.grid.render(data.items, { locked: this.cutoffPassed });
       this.grid.filter(Dom.byId("menu-search").value);
+      await this.loadOwnerStatus();
     } catch (err) {
       this.grid.showError("Không tải được thực đơn. Kiểm tra kết nối rồi tải lại trang.");
     }
   }
 
+  /** Tên người đang đứng ra đặt chung/thu tiền cho ngày đang xem. */
+  async loadOwnerStatus() {
+    const el = Dom.byId("order-owner-info");
+    if (!el || !this.selectedDate) return;
+    try {
+      const status = await api.get(
+        `/orders/round-status?date=${encodeURIComponent(this.selectedDate)}`
+      );
+      el.classList.remove("is-you", "is-unclaimed");
+      if (!status.owner) {
+        el.classList.add("is-unclaimed");
+        el.textContent = "Chưa có ai đứng ra đặt chung cho ngày này.";
+      } else if (this.user && status.owner.id === this.user.id) {
+        el.classList.add("is-you");
+        el.textContent = "Bạn đang đứng ra đặt chung cho ngày này.";
+      } else {
+        el.textContent = `${status.owner.name} đang đứng ra đặt chung cho ngày này.`;
+      }
+    } catch (err) {
+      el.textContent = "";
+    }
+  }
+
+  /** Đơn hiện tại của chính người dùng cho this.selectedDate. */
   async loadOrder() {
     const box = Dom.byId("my-order");
     if (!box) return;
@@ -177,6 +217,7 @@ export class MenuPage extends BasePage {
     }
   }
 
+  /** Đổi ngày đang xem (chọn hôm nay hay đặt trước hôm sau) và tải lại mọi phần liên quan. */
   async switchDate(date) {
     if (!date || date === this.selectedDate) return;
     this.selectedDate = date;
@@ -384,6 +425,7 @@ export class MenuPage extends BasePage {
 
   // ===== Đặt món =====
 
+  /** Gửi đơn mới (hoặc ghi đè đơn pending cũ) cho this.selectedDate từ các món đã chọn trong lưới. */
   async placeOrder() {
     const button = Dom.byId("place-order-btn");
     const message = Dom.byId("order-message");

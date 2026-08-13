@@ -14,12 +14,13 @@ class FundService:
     """Toàn bộ tiền dùng integer (đơn vị đồng), không dùng float."""
 
     def __init__(self, fund_repository, order_repository, user_repository,
-                 event_broker, config=Config):
+                 event_broker, config=Config, notifications=None):
         self.fund = fund_repository
         self.orders = order_repository
         self.users = user_repository
         self.events = event_broker
         self.config = config
+        self.notifications = notifications
 
     # ===== Số dư & sổ quỹ (5.3, 5.4) =====
 
@@ -41,8 +42,9 @@ class FundService:
         return amount
 
     def _announce(self, message: str):
-        """Báo cho mọi tài khoản đang mở app, dùng chung kênh thông báo broadcast."""
-        self.events.publish("announcement", {"message": message, "from": "Quỹ chung"})
+        """Báo cho mọi tài khoản đang mở app, lưu lại vào trung tâm thông báo."""
+        if self.notifications:
+            self.notifications.notify("fund_announcement", "Quỹ chung", message)
 
     def topup(self, user_id, amount, note: str = "") -> dict:
         amount = self._validate_amount(amount)

@@ -1,3 +1,4 @@
+import { NotificationBell } from "./NotificationBell.js";
 import { api } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
 import { hasAnyRole } from "../core/roles.js";
@@ -15,12 +16,13 @@ export class Navbar {
 
     this.placeholder.innerHTML = `
       <header class="navbar">
-        <div class="brand"><span class="dot" aria-hidden="true"></span> Lunch App</div>
+        <a href="index.html" class="brand"><span class="dot" aria-hidden="true"></span> Lunch App</a>
         <div class="navbar-right">
           <nav aria-label="Điều hướng chính">
-            <a href="index.html">Thực đơn</a>
-            <a href="history.html">Lịch sử</a>
+            <a href="index.html"><span class="nav-icon" aria-hidden="true">🍱</span>Thực đơn</a>
+            <a href="history.html"><span class="nav-icon" aria-hidden="true">🕘</span>Lịch sử</a>
           </nav>
+          <div id="notification-bell" class="notification-bell"></div>
           <div id="user-info" class="user-menu">
             <button type="button" class="user-menu-trigger" id="user-menu-trigger"
                     aria-haspopup="true" aria-expanded="false">
@@ -30,10 +32,11 @@ export class Navbar {
             </button>
             <div class="user-menu-dropdown" id="user-menu-dropdown">
               <!-- Các link theo vai trò, ẩn mặc định cho tới khi biết user là ai -->
-              <a href="treasury.html" id="treasury-link" hidden>Quỹ</a>
-              <a href="admin.html" id="admin-link" hidden>Trang quản trị</a>
+              <a href="treasury.html" id="treasury-link" hidden><span class="nav-icon" aria-hidden="true">💰</span>Quỹ</a>
+              <a href="admin.html" id="admin-link" hidden><span class="nav-icon" aria-hidden="true">🛵</span>Đặt hàng chung</a>
+              <a href="settings.html" id="settings-link" hidden><span class="nav-icon" aria-hidden="true">⚙️</span>Cài đặt hệ thống</a>
               <button type="button" id="theme-toggle-btn" class="user-menu-action"></button>
-              <a href="#" id="logout-link">Đăng xuất</a>
+              <a href="#" id="logout-link"><span class="nav-icon" aria-hidden="true">🚪</span>Đăng xuất</a>
             </div>
           </div>
         </div>
@@ -54,7 +57,11 @@ export class Navbar {
 
     const render = () => {
       const isDark = Theme.get() === "dark";
-      button.textContent = isDark ? "☀️ Giao diện sáng" : "🌙 Giao diện tối";
+      button.innerHTML = "";
+      button.append(
+        Dom.el("span", { class: "nav-icon", "aria-hidden": "true", text: isDark ? "☀️" : "🌙" }),
+        document.createTextNode(isDark ? "Giao diện sáng" : "Giao diện tối")
+      );
     };
     render();
 
@@ -106,10 +113,24 @@ export class Navbar {
       Dom.setText("user-name", this.user.name);
       this.renderAvatar(this.user);
 
-      if (this.user.is_admin) Dom.byId("admin-link").hidden = false;
+      // Ai cũng có thể đứng ra đặt hàng cho một ngày (không cố định ở admin
+      // nữa), nên mọi người đã đăng nhập đều thấy link này — không khoá link
+      // dù ngày khác đã có người phụ trách, vì họ vẫn chọn ngày khác được.
+      Dom.byId("admin-link").hidden = false;
+
       if (hasAnyRole(this.user, ["treasurer", "admin"])) {
         Dom.byId("treasury-link").hidden = false;
+      } else {
+        Dom.byId("treasury-link").remove();
       }
+
+      if (hasAnyRole(this.user, ["admin"])) {
+        Dom.byId("settings-link").hidden = false;
+      } else {
+        Dom.byId("settings-link").remove();
+      }
+
+      new NotificationBell().mount();
 
       return this.user;
     } catch (err) {

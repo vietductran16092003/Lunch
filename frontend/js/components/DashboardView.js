@@ -12,19 +12,22 @@ export class DashboardView {
     this.box = Dom.byId("dashboard-box");
     this.stats = Dom.byId("dashboard-stats");
     this.onConfirmPayment = onConfirmPayment || (() => {});
+    // Chỉ đúng người đang phụ trách ngày này mới bấm "Đã nhận tiền" được —
+    // kể cả admin cũng không đi tắt (khác các nút khác trong trang).
+    this.canConfirmPayment = false;
   }
 
   static statusClass(status) {
     return STATUS_BADGE.includes(status) ? status : "pending";
   }
 
-  showError(onRetry) {
+  showError(onRetry, message) {
     if (!this.box) return;
     this.box.setAttribute("aria-busy", "false");
     const retry = Dom.el("button", { type: "button", text: "Thử lại" });
     retry.addEventListener("click", onRetry);
     Dom.clear(this.box).appendChild(
-      Dom.emptyState("⚠️", "Không tải được bảng điều khiển. ", retry)
+      Dom.emptyState("⚠️", message || "Không tải được bảng điều khiển. ", retry)
     );
   }
 
@@ -62,8 +65,11 @@ export class DashboardView {
 
     const lockBtn = Dom.byId("lock-orders-btn");
     if (lockBtn) {
-      lockBtn.disabled = data.locked || data.totals.employee_count === 0;
+      // Chỉ chốt được đúng ngày hôm nay — ngày khác (đặt trước) chưa tới lúc
+      // chốt, tránh bấm nhầm khoá đơn của ngày còn xa.
+      lockBtn.disabled = data.locked || data.totals.employee_count === 0 || !data.is_today;
       lockBtn.textContent = data.locked ? "Đơn đã chốt" : "Chốt đơn & đặt trên Grab";
+      lockBtn.title = data.is_today ? "" : "Chỉ chốt được đơn của ngày hôm nay.";
     }
 
     const exportLink = Dom.byId("export-link");
@@ -186,15 +192,22 @@ export class DashboardView {
       return Dom.el("td", { style: "color: var(--text-secondary);", text: "Chưa chốt" });
     }
 
-    // Đã chốt đơn thì xác nhận được, kể cả khi nhân viên chưa bấm báo
+    // Đã chốt đơn thì xác nhận được, kể cả khi nhân viên chưa bấm báo —
+    // nhưng chỉ đúng người phụ trách ngày này mới bấm được, kể cả admin.
     const confirm = Dom.el("button", {
       type: "button",
       class: emp.awaiting_confirmation ? "" : "ghost",
       text: "Đã nhận tiền",
+      disabled: !this.canConfirmPayment,
+      title: this.canConfirmPayment
+        ? undefined
+        : "Chỉ người phụ trách đặt hàng ngày này mới xác nhận được.",
       "aria-label":
         `Xác nhận đã nhận tiền của ${emp.employee_name}, ${Formatter.money(emp.total_cost)}`,
     });
-    confirm.addEventListener("click", () => this.confirmPayment(emp, confirm));
+    if (this.canConfirmPayment) {
+      confirm.addEventListener("click", () => this.confirmPayment(emp, confirm));
+    }
 
     return Dom.el(
       "td",

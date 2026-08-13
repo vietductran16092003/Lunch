@@ -90,3 +90,37 @@ def test_cannot_delete_user_with_orders(client, container):
 
     resp = client.delete(f"/api/admin/users/{employee_id}")
     assert resp.status_code == 409
+
+
+def test_cannot_delete_user_who_owns_a_date_but_never_ordered(client, container):
+    """Đứng ra đặt (thêm món đầu tiên) nhưng chưa tự đặt món nào — vẫn phải
+    chặn xoá, không thì order_owners.user_id mồ côi (không có FK enforcement)."""
+    restaurant_id = container.restaurant_repo.list_all()[0].id
+
+    login_employee(client)
+    client.post("/api/admin/menu", json={
+        "name": "Chua tu dat", "price": 10000,
+        "available_date": "2030-01-02", "restaurant_id": restaurant_id,
+    })
+
+    login(client)
+    resp = client.get("/api/admin/users")
+    employee_id = next(u["id"] for u in resp.get_json()["users"] if u["email"] == "nhanvien@fpt.com")
+
+    resp = client.delete(f"/api/admin/users/{employee_id}")
+    assert resp.status_code == 409
+
+
+def test_admin_can_reset_user_password(client):
+    login(client)
+    resp = client.get("/api/admin/users")
+    employee_id = next(u["id"] for u in resp.get_json()["users"] if u["email"] == "nhanvien@fpt.com")
+
+    resp = client.post(f"/api/admin/users/{employee_id}/reset-password")
+    assert resp.status_code == 200
+    temp_password = resp.get_json()["temp_password"]
+    assert len(temp_password) >= 8
+
+    client.post("/api/logout")
+    resp = client.post("/api/login", json={"email": "nhanvien@fpt.com", "password": temp_password})
+    assert resp.status_code == 200

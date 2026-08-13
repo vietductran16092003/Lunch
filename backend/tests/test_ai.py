@@ -16,7 +16,7 @@ def test_chat_answers_cutoff_question(client):
     login_employee(client)
     resp = client.post("/api/ai/chat", json={"message": "giờ chốt đơn"})
     body = resp.get_json()
-    assert "10:30" in body["reply"]
+    assert "11:00" in body["reply"]
 
 
 def test_summary_requires_role(client):

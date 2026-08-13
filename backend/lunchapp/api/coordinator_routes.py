@@ -3,8 +3,9 @@ trò điều phối viên riêng (gộp thẳng vào trang Đặt hàng của ad
 
 from flask import Blueprint, jsonify, request
 
+from ..core.errors import ValidationError
 from ..core.roles import Role
-from ..core.security import SessionUser, require_role
+from ..core.security import SessionUser, require_login, require_role
 
 
 def build_coordinator_blueprint(services) -> Blueprint:
@@ -17,7 +18,7 @@ def build_coordinator_blueprint(services) -> Blueprint:
     def grouped():
         """Tổng số lượng từng món theo từng quán của một ngày, kèm ghi chú (mã 3.5)
         để tiện copy tay vào Grab."""
-        return jsonify(services.orders.grouped_by_restaurant(request.args.get("date")))
+        return jsonify(services.dashboard.grouped_by_restaurant(request.args.get("date")))
 
     # ===== Chia phí ship (mã 4.3) =====
 
@@ -41,17 +42,24 @@ def build_coordinator_blueprint(services) -> Blueprint:
     # ===== Thông báo chung (Phase 4) =====
 
     @bp.post("/broadcast")
-    @require_role(Role.ADMIN)
+    @require_login
     def broadcast():
+        """Gửi thông báo nổi cho mọi người — admin hoặc người phụ trách vòng
+        đặt đang mở, xem CollectorService.authorize_current_round()."""
+        if services.collectors:
+            services.collectors.authorize_current_round(
+                SessionUser.id(), SessionUser.is_admin(), config=services.config
+            )
+
         data = request.get_json(silent=True) or {}
         message = (data.get("message") or "").strip()
         if not message:
-            return jsonify({"error": "Vui lòng nhập nội dung thông báo"}), 400
+            raise ValidationError("Vui lòng nhập nội dung thông báo")
 
         sender = services.users.find_by_id(SessionUser.id())
-        services.events.publish("announcement", {
-            "message": message, "from": sender.name if sender else "Quản trị",
-        })
+        services.notifications.notify(
+            "broadcast", f"Thông báo từ {sender.name if sender else 'Quản trị'}", message,
+        )
         return jsonify({"status": "sent"})
 
     return bp

@@ -165,6 +165,18 @@ class OrderRepository(BaseRepository):
             cursor.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
             cursor.execute("DELETE FROM orders WHERE id = ?", (order_id,))
 
+    def delete_for_date(self, target_date: str):
+        """Xoá toàn bộ đơn (và các dòng món của chúng) của một ngày — dùng khi
+        gỡ bỏ hẳn một ngày đã lỡ dựng (mã nút X ở bảng điều khiển)."""
+        with self.db.session(commit=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM order_items WHERE order_id IN "
+                "(SELECT id FROM orders WHERE order_date = ?)",
+                (target_date,),
+            )
+            cursor.execute("DELETE FROM orders WHERE order_date = ?", (target_date,))
+
     def mark_paid(self, order_id, paid_at: str):
         self._execute("UPDATE orders SET paid_at = ? WHERE id = ?", (paid_at, order_id))
 

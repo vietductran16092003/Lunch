@@ -20,8 +20,15 @@ export class BasePage {
       // render() chuyển hướng sang login khi chưa đăng nhập
       if (!this.user) return;
       new Chatbot().mount();
-      // Thông báo chung (Phase 4) — luôn lắng nghe bất kể trang có gọi listen() hay không
-      realtime.on("announcement", (data) => toasts.info("Thông báo", data.message));
+      // Thông báo chung — luôn lắng nghe bất kể trang có gọi listen() hay không.
+      // NotificationBell tự tải lại danh sách khi có sự kiện này; đây chỉ lo hiện toast,
+      // và phải tự lọc vì server phát cho MỌI trình duyệt, không riêng người liên quan.
+      realtime.on("notification_created", (data) => {
+        const forEveryone = !data.target_user_id && !data.target_role;
+        const forMe = data.target_user_id === this.user.id
+          || (data.target_role && this.user.roles.includes(data.target_role));
+        if (forEveryone || forMe) toasts.info(data.title, data.message);
+      });
       realtime.connect();
     }
     await this.init();

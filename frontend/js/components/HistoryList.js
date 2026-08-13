@@ -20,9 +20,9 @@ export class HistoryList {
     this.selected = new Set();
   }
 
-  /** Id các đơn đang chờ (pending) — chỉ nhóm này xoá được. */
-  pendingIds(history) {
-    return (history || []).filter((o) => o.status === "pending").map((o) => o.id);
+  /** Id các đơn đã hoàn tất (đã thanh toán) — chỉ nhóm này xoá được. */
+  deletableIds(history) {
+    return (history || []).filter((o) => o.status === "completed").map((o) => o.id);
   }
 
   setSelected(ids) {
@@ -67,7 +67,7 @@ export class HistoryList {
   buildCard(order, index, todayKeys) {
     const detailId = `history-detail-${order.id}`;
 
-    const checkbox = order.status === "pending"
+    const checkbox = order.status === "completed"
       ? Dom.el("input", {
           type: "checkbox",
           class: "history-select",
@@ -93,7 +93,7 @@ export class HistoryList {
         "aria-controls": detailId,
       },
       Dom.el("span", { class: "h-caret", "aria-hidden": "true", text: "›" }),
-      Dom.el("span", { class: "h-date", text: order.order_date }),
+      Dom.el("span", { class: "h-date" }, Dom.el("span", { "aria-hidden": "true", text: "📅 " }), document.createTextNode(order.order_date)),
       Dom.el("span", {
         class: `badge ${HistoryList.statusClass(order.status)}`,
         text: order.status_label || order.status,
@@ -138,7 +138,7 @@ export class HistoryList {
     const tbody = Dom.el("tbody");
 
     order.items.forEach((item) => {
-      const name = Dom.el("td", {}, item.name);
+      const name = Dom.el("td", {}, Dom.el("span", { "aria-hidden": "true", text: "🍴 " }), document.createTextNode(item.name));
       if (item.restaurant_name) {
         name.appendChild(
           Dom.el("div", {

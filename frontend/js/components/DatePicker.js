@@ -3,10 +3,12 @@ import { Formatter } from "../core/Formatter.js";
 
 /** Dải chọn ngày. Chỉ hiện khi có từ 2 ngày trở lên để đỡ rối. */
 export class DatePicker {
-  constructor(containerId, onSelect, titleId = null) {
+  constructor(containerId, onSelect, titleId = null, onDelete = null) {
     this.container = Dom.byId(containerId);
     this.title = titleId ? Dom.byId(titleId) : null;
     this.onSelect = onSelect;
+    // Có onDelete thì mọi chip TRỪ hôm nay đều có dấu x để gỡ bỏ hẳn ngày đó
+    this.onDelete = onDelete;
   }
 
   render(days, selectedDate, today) {
@@ -51,6 +53,29 @@ export class DatePicker {
     );
 
     chip.addEventListener("click", () => this.onSelect(day.date));
+
+    if (this.onDelete && day.date !== today && day.can_delete !== false) {
+      const remove = Dom.el("span", {
+        class: "chip-remove",
+        role: "button",
+        tabindex: "0",
+        "aria-label": `Gỡ bỏ ngày ${short}`,
+        text: "✕",
+      });
+      const trigger = (e) => {
+        e.stopPropagation();
+        this.onDelete(day.date);
+      };
+      remove.addEventListener("click", trigger);
+      remove.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          trigger(e);
+        }
+      });
+      chip.appendChild(remove);
+    }
+
     return chip;
   }
 }
