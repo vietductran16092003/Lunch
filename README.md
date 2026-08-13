@@ -21,6 +21,35 @@
 - **Migration**: Alembic (chỉ dùng làm runner chạy migration; mọi thay đổi schema mới nên tạo qua `alembic revision`, xem `backend/migrations/README`). Bootstrap schema ban đầu vẫn do `Database.init_schema()` tự lo, chạy mỗi lần app khởi động.
 - **Test**: `pytest` cho backend.
 
+## 3. Quy trình phát triển có hỗ trợ AI
+
+Toàn bộ quá trình phát triển được thực hiện với **Claude Code**, sử dụng AI trực tiếp cho thiết kế, lập trình, kiểm thử và review.
+
+Quy trình sử dụng:
+- **Claude Code:** thực hiện phần lớn công việc phát triển.
+- **3 nhóm chuyên biệt:** review độc lập theo từng góc nhìn.
+- **AI Skills:** hỗ trợ review nhanh và tra cứu Design System.
+- Các phát hiện quan trọng được kiểm chứng bằng test hoặc review lại trước khi áp dụng.
+
+### Các Sub-Agent đã sử dụng
+
+| Agent | Mục đích sử dụng | Kết quả chính |
+|---|---|---|
+| **Code Reviewer** | Rà soát toàn bộ diff chưa commit của mô hình Collector/Ownership và các thay đổi kiến trúc | Phát hiện lỗi lệch logic **"ngày hiện tại"** giữa frontend/backend và nguy cơ mất dữ liệu khi sửa món thiếu trường. Cả hai lỗi đã được sửa và kiểm chứng. |
+| **Backend Architect** | - Review kiến trúc backend: layering, schema, phân quyền, service boundary.<br>- Triển khai các thay đổi về đa role, lịch coordinator, deadline, đặt lại đơn cũ, gộp đơn theo quán, chia phí ship và quỹ chung. | - Phát hiện **4 kiểu phân quyền** đang bị phân tán → gom thành bảng chính sách.<br>- Phát hiện thiếu **2 ràng buộc DB** cho bất biến nghiệp vụ.<br>- Tách logic báo cáo khỏi `OrderService` → `DashboardService`.<br>- Hoàn thành các thay đổi với **17/17 test pass** và **24/24 test pass**. |
+| **Data Engineer** | Kiểm tra tầng dữ liệu, schema, migration và database development thực tế ở chế độ chỉ đọc | Phát hiện lỗi thực tế trong dữ liệu: trigger mới chặn sai việc sửa món khi dữ liệu cũ vi phạm điều kiện. Đã sửa ở cả **service** và **trigger**, đồng thời bổ sung regression test. |
+| **UI Designer** | - Review toàn bộ giao diện sau khi đổi theme cam → xanh lá.<br>- Kiểm tra màu sắc, tương phản, phân cấp thông tin, component và layout.<br>- Review toàn bộ 9 trang để tìm lỗi căn chỉnh. | - Phát hiện **13 vấn đề** theo mức ưu tiên cao/vừa/thấp.<br>- Review lần 2 phát hiện thêm **8 vấn đề cụ thể theo file/line**.<br>- Kết quả được chuyển thành brief cho Frontend Developer. |
+| **Frontend Developer** | - Sửa các lỗi UI/UX từ review.<br>- Chuẩn hóa badge, form, typography, icon, empty-state và spacing.<br>- Tinh chỉnh Design System trong `style.css`.<br>- Xử lý dark mode, transition, trạng thái `:active` và reduced-motion. | - Áp dụng trực tiếp các thay đổi vào CSS/HTML/JS.<br>- Sửa lỗi contrast trong dark mode.<br>- Bổ sung `--transition-fast` và `--transition-base`.<br>- Dọn code thừa.<br>- Phát hiện khoảng **20 file JS** sử dụng emoji làm icon → tách thành task riêng. |
+| **AI Service Developer** | Dựng `ai_service.py` cho mã 7.7, làm tầng gọi LLM tập trung cho các tính năng AI về sau | **Chưa hoàn thành**. Agent bị dừng giữa chừng và không để lại code. |
+
+### Các Skill đã sử dụng
+
+| STT | Skill | Mục đích sử dụng | Kết quả |
+|---:|---|---|---|
+| **1** | `code-review` | Review nhanh git diff chưa commit ở backend và frontend, tập trung vào lỗi correctness và runtime rõ ràng | Phát hiện **6 lỗi thực tế**:<br>1. Thiếu authorization tại endpoint catalog.<br>2. Panel "Trả bằng quỹ" bị ẩn sai điều kiện.<br>3. Validation được kiểm tra trước authorization.<br>4. Endpoint `/deadline` bị mồ côi sau khi xóa UI.<br>5. `database.py` nuốt lỗi nhưng không ghi log như comment mô tả.<br>6. Guard không cần thiết trong `coordinator_routes.py` có thể vô hiệu hóa kiểm tra phân quyền broadcast. |
+| **2** | `ui-ux-pro-max` | Tra cứu Design System cho dashboard/SaaS, màu sắc, typography, UX, motion và accessibility | - Đề xuất palette teal + cam và font Fira.<br>- Giữ lựa chọn thực tế của dự án: **xanh lá + Inter**.<br>- Cung cấp checklist **WCAG AA**.<br>- Đề xuất transition **150–300ms**, touch target và loại bỏ anti-pattern emoji-as-icon.<br>- Dùng kết quả làm cơ sở để tự triển khai CSS/HTML. |
+| **3** | `Docx` | Tạo tài liệu Proposal Document phục vụ báo cáo và trình bày với mentor | Tạo `proposal.docx` gồm **5 phần**: tổng quan dự án, kiến trúc kỹ thuật, quy trình sử dụng AI, kết quả kiểm thử và định hướng phát triển tiếp theo. |
+
 ## Cấu trúc thư mục
 
 ```
