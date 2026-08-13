@@ -4,14 +4,21 @@ import { toasts } from "../core/ToastManager.js";
 
 /** Thêm nhà hàng từ đường dẫn GrabFood và quản lý danh sách đã lưu. */
 export class RestaurantManager {
-  constructor({ onChange } = {}) {
+  constructor({ onChange, onManageCatalog, getCanEdit, getCanManage } = {}) {
     this.form = Dom.byId("restaurant-form");
     this.urlInput = Dom.byId("grab-url");
     this.fetchBtn = Dom.byId("grab-fetch-btn");
     this.previewBox = Dom.byId("restaurant-preview");
     this.listBox = Dom.byId("restaurant-list");
-    this.select = Dom.byId("item-restaurant");
+    this.select = Dom.byId("apply-restaurant");
     this.onChange = onChange || (() => {});
+    this.onManageCatalog = onManageCatalog || (() => {});
+    // admin hoặc đang phụ trách đúng ngày đang xem thì mới thêm quán mới được
+    this.getCanEdit = getCanEdit || (() => true);
+    // Sửa/Xóa quán là tài nguyên dùng chung cho mọi ngày — khớp với backend
+    // (route PUT/DELETE /admin/restaurants chỉ admin gọi được), không tính
+    // theo ngày đang xem như getCanEdit ở trên.
+    this.getCanManage = getCanManage || getCanEdit || (() => true);
     this.restaurants = [];
 
     if (this.form) this.bind();
@@ -23,6 +30,15 @@ export class RestaurantManager {
       e.preventDefault();
       this.preview();
     });
+  }
+
+  /** Khoá/mở form thêm nhà hàng + vẽ lại danh sách khi quyền thay đổi (đổi
+   * ngày đang xem/áp dụng). */
+  applyLock() {
+    const canEdit = this.getCanEdit();
+    this.urlInput.disabled = !canEdit;
+    this.fetchBtn.disabled = !canEdit;
+    this.renderList();
   }
 
   async load() {
@@ -82,21 +98,35 @@ export class RestaurantManager {
   }
 
   buildRow(restaurant) {
-    const edit = Dom.el("button", {
+    const catalog = Dom.el("button", {
       type: "button",
       class: "ghost",
-      text: "Sửa",
-      "aria-label": `Sửa nhà hàng ${restaurant.name}`,
+      text: "Món",
+      "aria-label": `Quản lý danh mục món của ${restaurant.name}`,
     });
-    edit.addEventListener("click", () => this.openEditor(restaurant));
+    catalog.addEventListener("click", () => this.onManageCatalog(restaurant));
 
-    const remove = Dom.el("button", {
-      type: "button",
-      class: "danger",
-      text: "Xóa",
-      "aria-label": `Xóa nhà hàng ${restaurant.name}`,
-    });
-    remove.addEventListener("click", () => this.delete(restaurant, remove));
+    const actions = [catalog];
+
+    if (this.getCanManage()) {
+      const edit = Dom.el("button", {
+        type: "button",
+        class: "ghost",
+        text: "Sửa",
+        "aria-label": `Sửa nhà hàng ${restaurant.name}`,
+      });
+      edit.addEventListener("click", () => this.openEditor(restaurant));
+
+      const remove = Dom.el("button", {
+        type: "button",
+        class: "danger",
+        text: "Xóa",
+        "aria-label": `Xóa nhà hàng ${restaurant.name}`,
+      });
+      remove.addEventListener("click", () => this.delete(restaurant, remove));
+
+      actions.push(edit, remove);
+    }
 
     return Dom.el(
       "tr",
@@ -124,7 +154,7 @@ export class RestaurantManager {
       Dom.el(
         "td",
         {},
-        Dom.el("div", { style: "display:flex; gap:6px; flex-wrap:wrap;" }, edit, remove)
+        Dom.el("div", { style: "display:flex; gap:8px; flex-wrap:wrap;" }, ...actions)
       )
     );
   }
@@ -160,7 +190,7 @@ export class RestaurantManager {
 
     const form = Dom.el(
       "form",
-      { style: "background:none; border:none; padding:0; width:100%;" },
+      { class: "plain-form" },
       Dom.el(
         "div",
         { style: "display:flex; flex-wrap:wrap; gap:12px;" },
@@ -220,6 +250,7 @@ export class RestaurantManager {
     }
   }
 
+  /** Đọc thông tin quán từ đường dẫn GrabFood (chưa lưu) để người dùng kiểm tra trước khi bấm Lưu. */
   async preview() {
     this.urlInput.removeAttribute("aria-invalid");
 
@@ -235,7 +266,7 @@ export class RestaurantManager {
       const data = await api.post("/admin/restaurants/preview", {
         grab_url: this.urlInput.value.trim(),
       });
-      this.renderPreview(data.restaurant, data.hint);
+      this.renderPreview(data.restaurant, data.hint, data.fetched);
     } catch (err) {
       this.urlInput.setAttribute("aria-invalid", "true");
       toasts.error("Không đọc được đường dẫn", err.message);
@@ -244,7 +275,7 @@ export class RestaurantManager {
     }
   }
 
-  renderPreview(info, hint) {
+  renderPreview(info, hint, fetched) {
     if (!this.previewBox) return;
     Dom.clear(this.previewBox);
 
@@ -271,7 +302,8 @@ export class RestaurantManager {
     const save = Dom.el("button", {
       type: "button",
       text: "Lưu nhà hàng",
-      style: "margin-top:12px;",
+      style: "margin-top:24px;",
+      disabled: !this.getCanEdit(),
     });
     save.addEventListener("click", () => this.save(info, { name, address, rating }, save));
 
@@ -279,7 +311,11 @@ export class RestaurantManager {
       "div",
       { class: "card" },
       Dom.el("h3", { text: "Kiểm tra thông tin trước khi lưu" }),
-      hint ? Dom.notice("info", null, hint) : null,
+      fetched
+        ? Dom.notice("success", null, "Đã tự động lấy đánh giá và địa chỉ từ Grab — kiểm tra lại rồi lưu.")
+        : hint
+          ? Dom.notice("info", null, hint)
+          : null,
       Dom.el(
         "div",
         { style: "display:flex; flex-wrap:wrap; gap:12px;" },
@@ -294,6 +330,7 @@ export class RestaurantManager {
     name.input.focus();
   }
 
+  /** Lưu nhà hàng đã xem trước vào danh sách thật — mở cho mọi người đăng nhập, không riêng admin. */
   async save(info, fields, button) {
     if (!fields.name.input.value.trim()) {
       fields.name.input.setAttribute("aria-invalid", "true");

@@ -1,0 +1,29 @@
+Alembic migrations for the Lunch App backend.
+
+This app talks to SQLite with plain sqlite3 + hand-written SQL (see
+lunchapp/repositories/, lunchapp/core/database.py) -- there is no SQLAlchemy
+ORM layer here. Alembic is used purely as a migration *runner*; SQLAlchemy is
+only present because Alembic depends on it for its Engine/connection
+handling. `target_metadata` in env.py is intentionally None: there is nothing
+to autogenerate against.
+
+Existing databases (dev and any deployed one) were bootstrapped by
+lunchapp.core.database.Database.init_schema(), which the app still calls on
+every boot (see run.py) and will keep doing so -- this migration setup does
+not replace that, it sits alongside it. The single baseline revision
+(24ac7b783b53) exists only so future schema changes have an Alembic history
+to build on, instead of appending another branch to
+Database._migrate_columns().
+
+Going forward, when a schema change is needed:
+
+    alembic revision -m "add whatever_column to whatever_table"
+
+...then fill in upgrade()/downgrade() with raw SQL via op.execute(...),
+matching the style already used in core/database.py. Do NOT also add the
+same change to Database._migrate_columns() -- pick one system per change
+(new changes go through Alembic; the ad-hoc bootstrap stays frozen at what
+it already covers).
+
+To run migrations: `alembic upgrade head` (reads the DB path from
+lunchapp.Config.DB_PATH, or override with the LUNCH_DB_PATH env var).

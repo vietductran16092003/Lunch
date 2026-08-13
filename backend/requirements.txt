@@ -1,2 +1,5 @@
 Flask==3.0.3
 Flask-Cors==4.0.1
+pytest==8.3.3
+alembic==1.19.1
+SQLAlchemy==2.0.52

@@ -1,13 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
+  <script>try{if(localStorage.getItem('lunchapp-theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Đặt bữa trưa</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=19">
+  <link rel="stylesheet" href="assets/css/style.css?v=55">
 </head>
 <body data-page="menu">
   <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
@@ -16,17 +17,28 @@
   <main class="container" id="main">
     <h1 id="menu-heading-title">Thực đơn</h1>
     <p class="subtitle" id="today-date">Đang tải thực đơn…</p>
+    <p class="helper">⏰ Giờ chốt đơn cố định <strong>11:00</strong> hằng ngày — quá giờ này không đặt, sửa hay huỷ đơn được nữa.</p>
+    <p class="owner-badge" id="order-owner-info"></p>
 
     <!-- Chọn ngày: có thực đơn hôm sau thì đặt trước được luôn -->
-    <div class="date-picker" id="date-picker" role="group" aria-label="Chọn ngày đặt món" hidden></div>
+    <h2 class="section-title" id="date-picker-title" hidden>Chọn ngày đặt món</h2>
+    <div class="date-picker" id="date-picker" role="group" aria-labelledby="date-picker-title" hidden></div>
 
     <!-- Tiến trình đơn hàng, cập nhật theo trạng thái đơn của chính người đang xem -->
+    <h2 class="stepper-title">Tiến trình đơn hàng</h2>
     <ol class="stepper" id="order-stepper" aria-label="Tiến trình đơn hàng hôm nay"></ol>
 
     <div id="cutoff-notice"></div>
 
+    <div id="suggestions-box"></div>
+
     <section aria-labelledby="menu-heading">
-      <h2 id="menu-heading" class="sr-only">Danh sách món ăn</h2>
+      <h2 id="menu-heading" class="section-title">Danh sách món ăn</h2>
+      <div class="search-row">
+        <label for="menu-search" class="sr-only">Tìm món</label>
+        <input type="search" id="menu-search" placeholder="Tìm món theo tên…">
+        <button type="button" id="menu-search-btn" aria-label="Tìm món">🔍</button>
+      </div>
       <div id="menu-list" class="menu-grid" aria-busy="true">
         <div class="skeleton"></div>
         <div class="skeleton"></div>
@@ -39,9 +51,9 @@
         <span class="stat-value" id="selection-total">0 đ</span>
         <span class="stat-label" id="selection-count">Chưa chọn món nào</span>
       </div>
-      <p id="order-message" role="status" aria-live="polite" style="margin:0;"></p>
+      <p id="order-message" class="status-line" role="status" aria-live="polite"></p>
       <div class="actions">
-        <button type="button" class="ghost" id="payment-method-btn">Thanh toán</button>
+        <button type="button" class="ghost" id="payment-method-btn" disabled>Thanh toán</button>
         <button type="button" id="place-order-btn">Đặt món</button>
       </div>
     </div>
@@ -61,7 +73,7 @@
       <div class="modal-step" id="payment-step-choose">
         <div id="order-summary-panel"></div>
         <div id="payment-info-panel"></div>
-        <p id="payment-modal-message" role="status" aria-live="polite" style="margin:0;"></p>
+        <p id="payment-modal-message" class="status-line" role="status" aria-live="polite"></p>
 
         <button type="button" id="payment-confirm-btn">Tôi đã chuyển khoản</button>
         <button type="button" class="modal-cancel" id="payment-modal-cancel">Để sau</button>
@@ -71,7 +83,7 @@
       <div class="modal-step" id="payment-step-success" hidden>
         <div class="pay-success">
           <div class="pay-check is-waiting" aria-hidden="true">⏳</div>
-          <h3 id="pay-success-title">Đã gửi báo chuyển khoản</h3>
+          <h3 id="pay-success-title">Đã gửi thông tin báo chuyển khoản</h3>
           <p class="pay-amount" id="pay-success-amount"></p>
           <p class="pay-meta" id="pay-success-meta"></p>
         </div>
@@ -79,6 +91,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="js/main.js?v=19"></script>
+  <script type="module" src="js/main.js?v=55"></script>
 </body>
 </html>

@@ -181,24 +181,7 @@ export class ForgotPasswordPage extends AuthPage {
       });
 
       box.appendChild(Dom.notice("info", null, data.message));
-
-      // Chưa cấu hình gửi email nên hiện thẳng link cho môi trường nội bộ
-      if (data.reset_token) {
-        const url = new URL("reset-password.html", window.location.href);
-        url.searchParams.set("token", data.reset_token);
-
-        box.appendChild(
-          Dom.el(
-            "div",
-            { class: "reset-link-box" },
-            Dom.el("p", {
-              style: "margin:0 0 8px;",
-              text: `Link có hiệu lực trong ${data.ttl_minutes} phút:`,
-            }),
-            Dom.el("a", { href: url.toString(), text: "Đặt lại mật khẩu ngay" })
-          )
-        );
-      }
+      this.form.hidden = true;
     } catch (err) {
       box.appendChild(Dom.notice("error", null, "Không kết nối được đến server"));
     } finally {

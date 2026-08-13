@@ -2,7 +2,7 @@ import { DatePicker } from "../components/DatePicker.js";
 import { MenuGrid } from "../components/MenuGrid.js";
 import { OrderStepper } from "../components/OrderStepper.js";
 import { PaymentModal } from "../components/PaymentModal.js";
-import { api } from "../core/ApiClient.js";
+import { ApiClient, api } from "../core/ApiClient.js";
 import { Dom } from "../core/Dom.js";
 import { Formatter } from "../core/Formatter.js";
 import { toasts } from "../core/ToastManager.js";
@@ -16,12 +16,12 @@ export class MenuPage extends BasePage {
     this.today = null;
     this.availableDates = [];
     this.order = null;
-    this.cutoffLabel = "10:30";
+    this.cutoffLabel = "11:00";
     this.cutoffPassed = false;
 
     this.stepper = new OrderStepper();
     this.grid = new MenuGrid("menu-list", (selection) => this.renderSelectionTotals(selection));
-    this.datePicker = new DatePicker("date-picker", (date) => this.switchDate(date));
+    this.datePicker = new DatePicker("date-picker", (date) => this.switchDate(date), "date-picker-title");
     this.modal = new PaymentModal({ onPaid: () => this.loadOrder() });
   }
 
@@ -31,9 +31,16 @@ export class MenuPage extends BasePage {
 
     Dom.byId("place-order-btn").addEventListener("click", () => this.placeOrder());
     Dom.byId("payment-method-btn").addEventListener("click", () => this.modal.open(this.order));
+    Dom.byId("menu-search").addEventListener("input", (e) => this.grid.filter(e.target.value));
+    Dom.byId("menu-search").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.grid.filter(e.target.value);
+    });
+    Dom.byId("menu-search-btn").addEventListener("click", () => {
+      this.grid.filter(Dom.byId("menu-search").value);
+    });
 
     await this.loadDates();
-    await Promise.all([this.loadMenu(), this.loadOrder()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
 
     this.listen({
       orders_locked: (data) => {
@@ -61,11 +68,63 @@ export class MenuPage extends BasePage {
 
   async refreshAll() {
     await this.loadDates();
-    await Promise.all([this.loadMenu(), this.loadOrder()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
+  }
+
+  /** Gợi ý món dựa trên lịch sử đặt của chính người dùng (Phase 3). */
+  async loadSuggestions() {
+    const box = Dom.byId("suggestions-box");
+    if (!box) return;
+    try {
+      const query = this.selectedDate ? `?date=${encodeURIComponent(this.selectedDate)}` : "";
+      const data = await api.get(`/ai/suggestions${query}`);
+      Dom.clear(box);
+      if (!data.suggestions || !data.suggestions.length) return;
+
+      const cards = data.suggestions.map((item) => {
+        const card = Dom.el(
+          "button",
+          { type: "button", class: "suggestion-card", "aria-label": `Thêm ${item.name}` },
+          item.image_url
+            ? Dom.el("img", {
+                class: "suggestion-thumb",
+                src: ApiClient.assetUrl(item.image_url),
+                alt: "",
+                loading: "lazy",
+              })
+            : Dom.el("div", { class: "suggestion-thumb is-placeholder", "aria-hidden": "true", text: "🍽️" }),
+          Dom.el(
+            "div",
+            { class: "suggestion-info" },
+            Dom.el("span", { class: "suggestion-name", text: item.name }),
+            Dom.el("span", { class: "suggestion-meta", text: `${Formatter.money(item.price)} · đã đặt ${item.order_count} lần` })
+          ),
+          Dom.el("span", { class: "suggestion-add", "aria-hidden": "true", text: "+" })
+        );
+        card.addEventListener("click", () => {
+          this.grid.addQuantity(item.id, 1);
+          const input = Dom.byId(`qty-${item.id}`);
+          if (input) input.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        return card;
+      });
+
+      box.appendChild(
+        Dom.el(
+          "div",
+          { class: "suggestions-panel" },
+          Dom.el("span", { class: "section-title", text: "🍀 Gợi ý cho bạn" }),
+          Dom.el("div", { class: "suggestions-row" }, ...cards)
+        )
+      );
+    } catch (err) {
+      Dom.clear(box);
+    }
   }
 
   // ===== Tải dữ liệu =====
 
+  /** Danh sách ngày có thực đơn + ngày mặc định để chọn (hôm nay, hoặc mai nếu đã quá giờ chốt). */
   async loadDates() {
     try {
       const data = await api.get("/menu/dates");
@@ -81,6 +140,7 @@ export class MenuPage extends BasePage {
     this.datePicker.render(this.availableDates, this.selectedDate, this.today);
   }
 
+  /** Tải danh sách món của this.selectedDate và vẽ lại toàn bộ tiêu đề/lưới món. */
   async loadMenu() {
     try {
       const query = this.selectedDate ? `?date=${encodeURIComponent(this.selectedDate)}` : "";
@@ -107,11 +167,37 @@ export class MenuPage extends BasePage {
 
       this.renderCutoffNotice();
       this.grid.render(data.items, { locked: this.cutoffPassed });
+      this.grid.filter(Dom.byId("menu-search").value);
+      await this.loadOwnerStatus();
     } catch (err) {
       this.grid.showError("Không tải được thực đơn. Kiểm tra kết nối rồi tải lại trang.");
     }
   }
 
+  /** Tên người đang đứng ra đặt chung/thu tiền cho ngày đang xem. */
+  async loadOwnerStatus() {
+    const el = Dom.byId("order-owner-info");
+    if (!el || !this.selectedDate) return;
+    try {
+      const status = await api.get(
+        `/orders/round-status?date=${encodeURIComponent(this.selectedDate)}`
+      );
+      el.classList.remove("is-you", "is-unclaimed");
+      if (!status.owner) {
+        el.classList.add("is-unclaimed");
+        el.textContent = "Chưa có ai đứng ra đặt chung cho ngày này.";
+      } else if (this.user && status.owner.id === this.user.id) {
+        el.classList.add("is-you");
+        el.textContent = "Bạn đang đứng ra đặt chung cho ngày này.";
+      } else {
+        el.textContent = `${status.owner.name} đang đứng ra đặt chung cho ngày này.`;
+      }
+    } catch (err) {
+      el.textContent = "";
+    }
+  }
+
+  /** Đơn hiện tại của chính người dùng cho this.selectedDate. */
   async loadOrder() {
     const box = Dom.byId("my-order");
     if (!box) return;
@@ -131,11 +217,12 @@ export class MenuPage extends BasePage {
     }
   }
 
+  /** Đổi ngày đang xem (chọn hôm nay hay đặt trước hôm sau) và tải lại mọi phần liên quan. */
   async switchDate(date) {
     if (!date || date === this.selectedDate) return;
     this.selectedDate = date;
     this.datePicker.render(this.availableDates, this.selectedDate, this.today);
-    await Promise.all([this.loadMenu(), this.loadOrder()]);
+    await Promise.all([this.loadMenu(), this.loadOrder(), this.loadSuggestions()]);
   }
 
   // ===== Hiển thị =====
@@ -212,11 +299,30 @@ export class MenuPage extends BasePage {
     const list = Dom.el("ul", { style: "margin:0; padding-left:18px;" });
     this.order.items.forEach((item) => {
       list.appendChild(
-        Dom.el("li", {
-          text: `${item.name} × ${item.quantity} — ${Formatter.money(item.price * item.quantity)}`,
-        })
+        Dom.el(
+          "li",
+          {},
+          `${item.name} × ${item.quantity} — ${Formatter.money(item.price * item.quantity)}`,
+          item.note
+            ? Dom.el("span", { class: "item-note", text: ` (${item.note})` })
+            : null
+        )
       );
     });
+
+    const totalLine =
+      this.order.shipping_share > 0
+        ? Dom.el(
+            "div",
+            { style: "text-align:right;" },
+            Dom.el("strong", { class: "mono", text: Formatter.money(this.order.total_cost) }),
+            Dom.el("div", {
+              class: "subtitle",
+              style: "margin:0;",
+              text: `gồm ${Formatter.money(this.order.shipping_share)} tiền ship`,
+            })
+          )
+        : Dom.el("strong", { class: "mono", text: Formatter.money(this.order.total_cost) });
 
     box.append(
       Dom.el(
@@ -226,13 +332,15 @@ export class MenuPage extends BasePage {
           class: `badge ${this.order.status}`,
           text: this.order.status_label,
         }),
-        Dom.el("strong", { class: "mono", text: Formatter.money(this.order.total_cost) })
+        totalLine
       ),
       list,
       Dom.el("p", {
         class: "subtitle",
         style: "margin:8px 0 0;",
-        text: "Thanh toán: Chuyển khoản cho người đặt",
+        text: this.order.payment_method === "fund"
+          ? "Thanh toán: Trả bằng quỹ chung"
+          : "Thanh toán: Chuyển khoản cho người đặt",
       })
     );
 
@@ -240,23 +348,31 @@ export class MenuPage extends BasePage {
       box.appendChild(this.buildCancelButton());
     }
 
-    if (this.order.status === "ordered" && !this.order.paid_at) {
+    const paidByFund = this.order.payment_method === "fund";
+
+    if (this.order.status === "ordered" && !this.order.paid_at && !paidByFund) {
       box.appendChild(
         Dom.notice("warning", "Quán đã nhận đơn", "Đến lúc chuyển khoản cho người đặt.")
       );
     }
-    if (this.order.awaiting_confirmation) {
+    if (this.order.awaiting_confirmation && !paidByFund) {
       box.appendChild(
         Dom.notice("info", "Đã báo chuyển khoản", "Đang chờ người đặt xác nhận đã nhận tiền.")
       );
     }
     if (this.order.status === "completed") {
       box.appendChild(
-        Dom.notice(
-          "success",
-          "Người đặt đã xác nhận nhận tiền",
-          "Xong rồi, bạn không cần làm gì thêm."
-        )
+        paidByFund
+          ? Dom.notice(
+              "success",
+              "Đã thanh toán bằng quỹ chung",
+              "Thủ quỹ đã trả tiền quán bằng quỹ, bạn không cần chuyển khoản."
+            )
+          : Dom.notice(
+              "success",
+              "Người đặt đã xác nhận nhận tiền",
+              "Xong rồi, bạn không cần làm gì thêm."
+            )
       );
     }
 
@@ -293,6 +409,13 @@ export class MenuPage extends BasePage {
     const button = Dom.byId("payment-method-btn");
     if (!button) return;
 
+    const paidByFund = this.order && this.order.payment_method === "fund";
+    button.hidden = Boolean(paidByFund);
+    if (paidByFund) return;
+
+    // Chưa có đơn nào thì chưa có gì để thanh toán — khoá nút lại
+    button.disabled = !this.order;
+
     const needsPayment =
       this.order && this.order.status === "ordered" && !this.order.paid_at;
     button.classList.toggle("lit", Boolean(needsPayment));
@@ -302,6 +425,7 @@ export class MenuPage extends BasePage {
 
   // ===== Đặt món =====
 
+  /** Gửi đơn mới (hoặc ghi đè đơn pending cũ) cho this.selectedDate từ các món đã chọn trong lưới. */
   async placeOrder() {
     const button = Dom.byId("place-order-btn");
     const message = Dom.byId("order-message");
@@ -317,7 +441,11 @@ export class MenuPage extends BasePage {
     Dom.setBusy(button, true, "Đang gửi đơn");
     try {
       await api.post("/orders", {
-        items: selection.map((i) => ({ menu_item_id: i.menu_item_id, quantity: i.quantity })),
+        items: selection.map((i) => ({
+          menu_item_id: i.menu_item_id,
+          quantity: i.quantity,
+          note: i.note || undefined,
+        })),
         order_date: this.selectedDate,
       });
 

@@ -7,7 +7,6 @@ một nơi để tầng service, repository và API không ai tự viết chuỗ
 """
 
 EMPLOYEE = "employee"
-COORDINATOR = "coordinator"
 TREASURER = "treasurer"
 ADMIN = "admin"
 
@@ -16,17 +15,15 @@ class Role:
     """Hằng số vai trò kèm nhãn hiển thị và helper kiểm tra hợp lệ."""
 
     EMPLOYEE = EMPLOYEE
-    COORDINATOR = COORDINATOR
     TREASURER = TREASURER
     ADMIN = ADMIN
 
     # Thứ tự trong ALL cũng là thứ tự chuẩn hoá khi trả về cho frontend, để
     # danh sách vai trò của một người luôn hiện cùng một trật tự.
-    ALL = (EMPLOYEE, COORDINATOR, TREASURER, ADMIN)
+    ALL = (EMPLOYEE, TREASURER, ADMIN)
 
     LABELS = {
         EMPLOYEE: "Nhân viên",
-        COORDINATOR: "Người điều phối",
         TREASURER: "Thủ quỹ",
         ADMIN: "Quản trị viên",
     }

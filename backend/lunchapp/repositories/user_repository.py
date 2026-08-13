@@ -107,6 +107,32 @@ class UserRepository(BaseRepository):
             )
         return clean
 
+    def delete(self, user_id):
+        with self.db.session(commit=True) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM user_roles WHERE user_id = ?", (user_id,))
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    def has_orders(self, user_id) -> bool:
+        return self._fetch_one(
+            "SELECT 1 FROM orders WHERE user_id = ?", (user_id,)
+        ) is not None
+
+    def has_order_owner_claims(self, user_id) -> bool:
+        """Từng đứng ra đặt/phụ trách một ngày (order_owners) — không có FK
+        enforcement ở tầng DB (SQLite không bật PRAGMA foreign_keys), nên phải
+        tự kiểm ở đây trước khi xoá để không để lại order_owners.user_id mồ côi."""
+        return self._fetch_one(
+            "SELECT 1 FROM order_owners WHERE user_id = ?", (user_id,)
+        ) is not None
+
+    def has_fund_transactions(self, user_id) -> bool:
+        """Từng có giao dịch quỹ (nạp/rút/góp) — xoá thẳng sẽ để lại
+        fund_transactions.user_id mồ côi, mất dấu vết đối soát."""
+        return self._fetch_one(
+            "SELECT 1 FROM fund_transactions WHERE user_id = ?", (user_id,)
+        ) is not None
+
     def count_with_role(self, role: str) -> int:
         row = self._fetch_one(
             "SELECT COUNT(*) AS total FROM user_roles WHERE role = ?", (role,)

@@ -68,10 +68,11 @@ class GoogleTokenVerifier:
 class AuthService:
     """Đăng nhập, đăng ký và quản lý mật khẩu."""
 
-    def __init__(self, user_repository, config=Config, google_verifier=None):
+    def __init__(self, user_repository, config=Config, google_verifier=None, notifications=None):
         self.users = user_repository
         self.config = config
         self.google = google_verifier or GoogleTokenVerifier(config)
+        self.notifications = notifications
 
     # ===== Mật khẩu =====
 
@@ -157,7 +158,12 @@ class AuthService:
     # ===== Đặt lại mật khẩu =====
 
     def create_reset_token(self, email: str) -> dict | None:
-        """Trả về None nếu email không tồn tại — người gọi không được tiết lộ điều đó."""
+        """Trả về None nếu email không tồn tại — người gọi không được tiết lộ điều đó.
+
+        Không trả token thẳng cho người yêu cầu nữa (mã cũ làm vậy vì chưa có
+        SMTP) — giờ chỉ đánh dấu "đang chờ duyệt" và báo cho quản trị viên qua
+        kênh realtime; quản trị viên duyệt bằng cách đặt mật khẩu tạm ở trang
+        Phân quyền, rồi báo lại cho người yêu cầu qua kênh khác."""
         email = (email or "").strip().lower()
         if not email:
             return None
@@ -172,11 +178,15 @@ class AuthService:
         ).isoformat(timespec="seconds")
         self.users.set_reset_token(user.id, token, expires)
 
-        return {
-            "reset_token": token,
-            "expires_at": expires,
-            "ttl_minutes": self.config.RESET_TOKEN_TTL_MINUTES,
-        }
+        if self.notifications:
+            self.notifications.notify(
+                "password_reset_requested",
+                "Yêu cầu quên mật khẩu",
+                f"{user.name} ({user.email}) đang chờ bạn duyệt.",
+                target_role=Role.ADMIN,
+            )
+
+        return {"requested": True}
 
     def reset_password(self, token: str, new_password: str):
         if not token:
@@ -241,6 +251,56 @@ class AuthService:
 
         self.users.replace_roles(user.id, wanted)
         return self.users.find_by_id(user.id).to_directory_entry()
+
+    def delete_user(self, user_id, actor_id=None) -> dict:
+        """Xoá hẳn một tài khoản khỏi hệ thống.
+
+        Chặn xoá chính mình (tự khoá cửa), xoá quản trị viên cuối cùng, và xoá
+        người đã có lịch sử đặt món (mất dấu vết đối soát thu chi) — những
+        trường hợp này nên đổi vai trò thay vì xoá tài khoản.
+        """
+        user = self.users.find_by_id(user_id)
+        if user is None:
+            raise NotFoundError("Không tìm thấy người dùng")
+
+        if actor_id is not None and int(actor_id) == int(user.id):
+            raise ConflictError("Bạn không thể tự xoá chính mình")
+
+        if user.has_role(Role.ADMIN) and self.users.count_with_role(Role.ADMIN) <= 1:
+            raise ConflictError("Hệ thống phải còn ít nhất một quản trị viên")
+
+        if self.users.has_orders(user.id):
+            raise ConflictError(
+                "Người này đã có lịch sử đặt món, không thể xoá — đổi vai trò thay vì xoá"
+            )
+
+        if self.users.has_order_owner_claims(user.id):
+            raise ConflictError(
+                "Người này từng đứng ra đặt/phụ trách một ngày, không thể xoá — đổi vai trò thay vì xoá"
+            )
+
+        if self.users.has_fund_transactions(user.id):
+            raise ConflictError(
+                "Người này đã có giao dịch quỹ, không thể xoá — đổi vai trò thay vì xoá"
+            )
+
+        self.users.delete(user.id)
+        return {"status": "deleted"}
+
+    def admin_reset_password(self, user_id) -> dict:
+        """Quản trị viên đặt lại mật khẩu cho người khác — sinh mật khẩu tạm
+        ngẫu nhiên, admin đọc và báo lại cho người dùng qua kênh khác (Zalo…).
+        Không nhận mật khẩu tự gõ từ admin để tránh lộ mật khẩu người dùng chọn.
+
+        Cũng là hành động "duyệt" khi người dùng đã bấm quên mật khẩu — xoá
+        luôn cờ đang chờ duyệt (reset_token) dù có yêu cầu hay không."""
+        user = self.users.find_by_id(user_id)
+        if user is None:
+            raise NotFoundError("Không tìm thấy người dùng")
+
+        temp_password = secrets.token_urlsafe(9)
+        self.users.clear_reset_token_and_set_password(user.id, self.hash_password(temp_password))
+        return {"status": "reset", "temp_password": temp_password}
 
     # ===== Cấu hình cho frontend =====
 

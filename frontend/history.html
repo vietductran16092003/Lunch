@@ -1,13 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
+  <script>try{if(localStorage.getItem('lunchapp-theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lịch sử đặt món</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=19">
+  <link rel="stylesheet" href="assets/css/style.css?v=55">
 </head>
 <body data-page="history">
   <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
@@ -15,12 +16,21 @@
 
   <main class="container" id="main">
     <h1>Lịch sử đặt món của tôi</h1>
-    <p class="subtitle">Toàn bộ đơn bạn đã đặt, mới nhất trước.</p>
+    <p class="subtitle">Toàn bộ đơn bạn đã đặt, mới nhất trước. Chỉ xoá được đơn đang chờ (chưa chốt).</p>
+
+    <div class="history-toolbar" id="history-toolbar" hidden>
+      <label class="check-inline">
+        <input type="checkbox" id="history-select-all">
+        Chọn tất cả đơn đang chờ
+      </label>
+      <button type="button" class="danger" id="history-delete-selected" disabled>Xoá đã chọn</button>
+    </div>
+
     <div id="history-list" aria-busy="true">
       <div class="skeleton" style="margin-bottom:12px;"></div>
       <div class="skeleton"></div>
     </div>
   </main>
-  <script type="module" src="js/main.js?v=19"></script>
+  <script type="module" src="js/main.js?v=55"></script>
 </body>
 </html>

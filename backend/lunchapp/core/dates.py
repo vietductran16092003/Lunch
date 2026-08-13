@@ -1,6 +1,6 @@
 """Tiện ích ngày giờ dùng chung."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 class Clock:
@@ -29,3 +29,7 @@ class Clock:
     @classmethod
     def is_past(cls, target_date: str) -> bool:
         return target_date < cls.today()
+
+    @staticmethod
+    def add_days(target_date: str, days: int) -> str:
+        return (date.fromisoformat(target_date) + timedelta(days=days)).isoformat()

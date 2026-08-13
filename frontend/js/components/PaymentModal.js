@@ -64,9 +64,11 @@ export class PaymentModal {
   }
 
   async loadPaymentInfo() {
-    if (this.paymentInfo) return this.paymentInfo;
+    // Không cache giữa các lần mở: mỗi đơn có thể thuộc một ngày khác nhau,
+    // và mỗi ngày có thể do một người khác đứng ra đặt/thu tiền.
+    const date = this.order ? this.order.order_date : "";
     try {
-      this.paymentInfo = await api.get("/payment-info");
+      this.paymentInfo = await api.get(`/payment-info?date=${encodeURIComponent(date)}`);
     } catch (err) {
       this.paymentInfo = { name: null, phone: null, qr_image_url: null };
     }
@@ -121,15 +123,13 @@ export class PaymentModal {
     const contact = Dom.el(
       "div",
       { class: "card", style: "margin:0;" },
-      Dom.el("p", { class: "subtitle", style: "margin:0 0 4px;", text: "Chuyển khoản cho:" }),
-      Dom.el("p", { style: "margin:0; font-weight:600;", text: this.collectorName }),
-      this.paymentInfo.phone
-        ? Dom.el("p", { class: "mono", style: "margin:4px 0 0;", text: this.paymentInfo.phone })
-        : Dom.el("p", {
-            class: "subtitle",
-            style: "margin:4px 0 0;",
-            text: "Chưa có số liên hệ.",
-          })
+      Dom.el("div", { class: "preview-box" },
+        Dom.el("p", { class: "preview-label", text: "Chuyển khoản cho:" }),
+        Dom.el("p", { class: "preview-name", text: this.collectorName }),
+        this.paymentInfo.phone
+          ? Dom.el("p", { class: "preview-phone mono", text: this.paymentInfo.phone })
+          : Dom.el("p", { class: "preview-phone", text: "Chưa có số liên hệ." })
+      )
     );
 
     const qrBox = Dom.el("div", { class: "card", style: "margin:0; text-align:center;" });

@@ -8,6 +8,7 @@ class EmployeeOrderSummary:
     """Gộp nhiều dòng món của cùng một nhân viên thành một bản ghi."""
 
     def __init__(self, row):
+        """Khởi tạo từ dòng đầu tiên của nhân viên này; add_line() gộp thêm các món sau."""
         self.order_id = row["order_id"]
         self.employee_name = row["employee_name"]
         self.employee_email = row["employee_email"]
@@ -63,12 +64,16 @@ class EmployeeOrderSummary:
 class DashboardService:
     """Một nguồn dữ liệu duy nhất thay cho hai màn hình tổng hợp và chi tiết cũ."""
 
-    def __init__(self, order_repository, restaurant_repository, config=Config):
+    def __init__(self, order_repository, restaurant_repository, config=Config,
+                 order_owner_repository=None):
         self.orders = order_repository
         self.restaurants = restaurant_repository
         self.config = config
+        self.order_owners = order_owner_repository
 
     def build(self, target_date=None) -> dict:
+        """Toàn bộ dữ liệu Bảng điều khiển cho một ngày: tổng hợp theo món, chi
+        tiết theo nhân viên, và danh sách ngày khác đang có dữ liệu."""
         target_date = Clock.date_or_today(target_date)
         today = Clock.today()
 
@@ -81,7 +86,7 @@ class DashboardService:
             "today": today,
             "is_today": target_date == today,
             # Ngày có thực đơn hoặc có đơn, để chuyển qua lại và theo dõi đơn đặt trước
-            "available_dates": self.orders.known_dates_from(today),
+            "available_dates": self._available_dates(today),
             "cutoff": self.config.cutoff_label(),
             "cutoff_passed": self.config.cutoff_passed_for(target_date),
             "summary": summary,
@@ -91,6 +96,63 @@ class DashboardService:
             "status_counts": counts,
             "locked": self._is_locked(counts),
         }
+
+    def grouped_by_restaurant(self, target_date=None) -> dict:
+        """Gộp toàn bộ đơn một ngày theo quán, cho coordinator copy tay vào Grab (mã 4.2).
+
+        Khác với build() (nhìn phẳng theo món): ở đây phải trả về dạng cây
+        quán -> món, kèm ghi chú (mã 3.5) gộp từ mọi đơn để coordinator biết
+        cần dặn quán thêm gì. Duyệt bằng Python thuần cho dễ đọc, quy mô app
+        này không cần SQL JOIN phức tạp.
+        """
+        target_date = Clock.date_or_today(target_date)
+        orders = self.orders.list_for_date(target_date)
+
+        # restaurant_name -> {"items": {item_name: {...}}, "grab_url": ...}
+        restaurants = {}
+        for order in orders:
+            for item in order.items:
+                rname = item.restaurant_name or "Không rõ quán"
+                bucket = restaurants.setdefault(rname, {"items": {}, "grab_url": None})
+                entry = bucket["items"].setdefault(
+                    item.name, {"name": item.name, "price": item.price,
+                                "total_quantity": 0, "notes": []}
+                )
+                entry["total_quantity"] += item.quantity
+                note = (item.note or "").strip()
+                if note and note not in entry["notes"]:
+                    entry["notes"].append(note)
+
+        # Lấy id/grab_url theo tên quán từ bảng restaurants (đủ dùng ở quy mô hiện tại)
+        all_restaurants = {r.name: r for r in self.restaurants.list_all()}
+
+        result = []
+        grand_total = 0
+        for rname, bucket in sorted(restaurants.items()):
+            items = sorted(bucket["items"].values(), key=lambda i: i["name"])
+            subtotal = sum(i["price"] * i["total_quantity"] for i in items)
+            grand_total += subtotal
+            match = all_restaurants.get(rname)
+            result.append({
+                "restaurant_id": match.id if match else None,
+                "restaurant_name": rname,
+                "grab_url": match.grab_url if match else None,
+                "items": items,
+                "subtotal": subtotal,
+            })
+
+        return {"date": target_date, "restaurants": result, "grand_total": grand_total}
+
+    def _available_dates(self, from_date: str) -> list:
+        """Danh sách ngày (từ from_date trở đi) đã có thực đơn/đơn, kèm ai đang
+        phụ trách mỗi ngày — dùng để vẽ dải chọn ngày + dấu x gỡ ngày ở frontend."""
+        owners = {}
+        if self.order_owners:
+            owners = {row["order_date"]: row["user_id"] for row in self.order_owners.list_from(from_date)}
+        return [
+            {"date": d, "owner_id": owners.get(d)}
+            for d in self.orders.known_dates_from(from_date)
+        ]
 
     @staticmethod
     def _group_by_employee(rows) -> list:

@@ -1,13 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
+  <script>try{if(localStorage.getItem('lunchapp-theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quản trị hệ thống</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=19">
+  <link rel="stylesheet" href="assets/css/style.css?v=55">
 </head>
 <body data-page="settings">
   <a href="#main" class="sr-only">Bỏ qua điều hướng, tới nội dung chính</a>
@@ -15,7 +16,7 @@
 
   <main class="container" id="main">
     <h1>Quản trị hệ thống</h1>
-    <p class="subtitle">Phân quyền, lịch gom đơn và giờ chốt đơn.</p>
+    <p class="subtitle">Phân quyền và giờ chốt đơn.</p>
 
     <nav class="subnav" aria-label="Khu vực quản trị">
       <a href="admin.html">Đặt hàng</a>
@@ -42,19 +43,8 @@
     <div id="role-matrix" aria-busy="true">
       <div class="skeleton" style="min-height:160px;"></div>
     </div>
-
-    <!-- 1.6 — Lịch tua người gom đơn -->
-    <div class="section-head">
-      <h2>Lịch gom đơn</h2>
-      <p>Gán người phụ trách gom đơn luân phiên cho 14 ngày tới.</p>
-    </div>
-
-    <div id="schedule-today"></div>
-    <div id="schedule-list" aria-busy="true">
-      <div class="skeleton" style="min-height:120px;"></div>
-    </div>
   </main>
 
-  <script type="module" src="js/main.js?v=19"></script>
+  <script type="module" src="js/main.js?v=55"></script>
 </body>
 </html>

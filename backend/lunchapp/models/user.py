@@ -86,4 +86,11 @@ class User(BaseModel):
 
     def to_directory_entry(self) -> dict:
         """Bản rút gọn dùng cho màn hình quản lý phân quyền."""
-        return {"id": self.id, "name": self.name, "email": self.email, "roles": list(self.roles)}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "roles": list(self.roles),
+            # Đã bấm "Quên mật khẩu", đang chờ quản trị viên duyệt
+            "password_reset_pending": bool(self.reset_token),
+        }
